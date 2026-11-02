@@ -106,3 +106,69 @@ button.primary { background: var(--accent-2); border-color: #000; }
 .check { display: block; margin-top: 8px; color: var(--muted); }
 .muted { color: var(--muted); }
 .small { font-size: 17px; }
+
+/* ---- Step 2: lobby, meeting, racecard, bet slip ---- */
+.top .purse { margin-left: auto; font-size: 22px; }
+.top .purse b { color: var(--accent); font-weight: normal; }
+.lobby-note { background: var(--panel-2); border-left: 4px solid var(--accent); padding: 8px 10px; margin-bottom: 12px; }
+.meetings { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.meeting-card { background: var(--panel-2); border: 2px solid var(--line); padding: 12px; display: grid; gap: 6px; align-content: start; }
+.meeting-card-name { font-family: var(--head-font); font-size: 12px; color: var(--accent); }
+.meeting-card button { justify-self: start; margin-top: 4px; }
+.loading { font-family: var(--head-font); font-size: 11px; text-align: center; padding: 30px; }
+
+.screen-meeting { display: grid; gap: 16px; }
+.screen-meeting.hidden { display: none; }
+.meeting-title { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+#meeting-name { font-family: var(--head-font); font-size: 12px; color: var(--accent); }
+#btn-leave { margin-left: auto; }
+.race-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.race-tab {
+  display: grid; grid-template-columns: auto auto; gap: 0 6px; min-width: 104px; text-align: left; padding: 4px 8px; font-size: 18px;
+}
+.race-tab .tab-no { color: var(--accent); }
+.race-tab .tab-time { text-align: right; color: var(--muted); }
+.race-tab .tab-grade { grid-column: 1 / -1; }
+.race-tab .tab-win { grid-column: 1 / -1; min-height: 24px; display: flex; gap: 4px; align-items: center; }
+.race-tab.on { border-color: var(--accent); background: #3a3450; }
+.race-tab.live .tab-no::after { content: ' ●'; color: var(--accent-2); }
+.tab-bet { color: #7fff7f; }
+
+.meeting-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .meeting-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.betslip { display: grid; gap: 8px; }
+.bet-types { display: flex; flex-wrap: wrap; gap: 4px; }
+.bet-types button { font-size: 18px; padding: 2px 8px; }
+.bet-types button.on, .pick.on { background: var(--accent); color: #111; border-color: #000; }
+.trap-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.pick { display: flex; align-items: center; gap: 6px; padding: 3px 6px; position: relative; }
+.pick i { font-style: normal; font-size: 15px; margin-left: auto; }
+.slip-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.stake button { font-size: 17px; padding: 1px 6px; }
+#stake { width: 70px; font-family: var(--body-font); font-size: 20px; background: var(--bg); color: var(--text); border: 2px solid var(--line); padding: 2px 4px; }
+.bets { list-style: none; margin: 4px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.bets li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.won { color: #7fff7f; }
+.lost { color: #ff8a7a; }
+button.link { background: none; border: none; color: var(--muted); text-decoration: underline; padding: 0; font-size: 18px; }
+
+.check.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
+.runner { border-top: 2px solid var(--line); padding: 10px 0; }
+.runner-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.runner-name { font-size: 24px; }
+.seed { color: var(--muted); font-size: 20px; }
+.runner-form { font-family: var(--head-font); font-size: 11px; color: var(--accent); letter-spacing: 2px; }
+.runner-best { color: var(--muted); }
+.odds { margin-left: auto; min-width: 64px; background: var(--accent); color: #111; border-color: #000; }
+.runner-sub { margin: 2px 0 0 34px; }
+.pen { margin: 2px 0 6px 34px; font-style: italic; }
+.hidden-stats { display: none; margin: 0 0 6px 34px; color: var(--accent); }
+.show-stats .hidden-stats { display: block; }
+.form-wrap { overflow-x: auto; }
+.form { border-collapse: collapse; font-size: 18px; white-space: nowrap; }
+.form th { color: var(--muted); font-weight: normal; text-align: left; padding: 1px 8px 1px 0; border-bottom: 1px solid var(--line); }
+.form td { padding: 1px 8px 1px 0; }
+.form .fin { color: var(--accent); }
+.remarks { color: var(--muted); }
+.dividends { margin: 10px 0; }

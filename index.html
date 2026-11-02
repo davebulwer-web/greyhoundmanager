@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Greyhound Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Greyhound Manager</h1>
+    <span class="tag">Step 1: race simulator</span>
+  </header>
+
+  <main>
+    <section class="panel race-panel">
+      <div class="race-head">
+        <span id="meeting">Loading…</span>
+        <span id="race-info"></span>
+        <span id="clock">0.00</span>
+      </div>
+
+      <div class="screen">
+        <canvas id="race"></canvas>
+        <div id="dist-left" class="overlay dist"></div>
+        <div id="banner" class="overlay banner hidden"></div>
+      </div>
+
+      <div class="below">
+        <div class="leaderboard">
+          <div class="box-title">Leaderboard</div>
+          <ol id="leaderboard"></ol>
+        </div>
+        <div class="map-wrap">
+          <div class="map-head"><span id="map-track"></span><span id="map-going"></span></div>
+          <canvas id="map" width="200" height="104"></canvas>
+          <div id="map-foot" class="map-foot"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btn-start" class="primary">Off they go!</button>
+        <div class="speed" role="group" aria-label="Race speed">
+          <button data-speed="1" class="on">x1</button>
+          <button data-speed="2">x2</button>
+          <button data-speed="4">x4</button>
+        </div>
+        <button id="btn-skip">Skip to result</button>
+        <button id="btn-replay" disabled>Watch again</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Racecard</h2>
+        <div class="setup">
+          <label>Track <select id="sel-track"></select></label>
+          <label>Distance <select id="sel-distance"></select></label>
+          <label>Grade <select id="sel-grade"></select></label>
+          <button id="btn-new">New race</button>
+        </div>
+      </div>
+      <table class="card">
+        <thead><tr><th>Trap</th><th>Greyhound</th><th>Age/Sex</th><th>Wt</th><th>Coat</th><th>Runs</th><th class="stat">Brk</th><th class="stat">Early</th><th class="stat">Speed</th><th class="stat">Stam</th><th class="stat">Bends</th><th class="stat">Consist</th></tr></thead>
+        <tbody id="card"></tbody>
+      </table>
+      <label class="check"><input type="checkbox" id="chk-stats"> Show hidden ability ratings (for testing; the real game hides these)</label>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Result</h2><span id="result-note" class="muted">Race not run yet.</span></div>
+      <table class="card result">
+        <thead><tr><th>Pos</th><th>Trap</th><th>Greyhound</th><th>By</th><th>Time</th><th>Sec</th><th>Bends</th><th>Comment</th></tr></thead>
+        <tbody id="result"></tbody>
+      </table>
+      <p class="muted small">Sec = time to the first bend. Bends = position at each bend. Comments: QAw quick away, SAw slow away, MsdBrk missed the break, EP early pace, ALed led all the way, Crd crowded, Bmp bumped, RnWd ran wide, RnOn ran on, Fdd faded, LdRnIn led on the run in, Rls/Mid/Wide where it ran. A number tells you where: 1 = first bend, 3 = third bend, RnUp = run up, BkStr = back straight, RnIn = run in.</p>
+    </section>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

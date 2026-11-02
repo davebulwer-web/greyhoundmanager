@@ -26,6 +26,7 @@ export class RaceView {
     this.cam = this.startCam();
     this.anim = race.runners.map((_, i) => (i * 3) % 8);
     this.lastT = -PRE_START;
+    this.dispY = null;
   }
 
   startCam() {
@@ -58,6 +59,39 @@ export class RaceView {
   laneY(lane) {
     const { railLaneY, wideLaneY } = this.view;
     return railLaneY - lane * (railLaneY - wideLaneY);
+  }
+
+  /**
+   * Screen height (paw line) for each dog. The sprites are drawn much longer
+   * than a real dog, so two dogs the engine has nose-to-tail in the same lane
+   * would overlap on screen. When dogs overlap lengthways we ease them apart
+   * vertically, so one is clearly nearer the camera and drawn in front.
+   * Only the drawing moves: who is ahead is untouched.
+   */
+  displayYs(states, g, simStep, snap) {
+    const { pixelsPerMetre: ppm, wideLaneY, railLaneY } = this.view;
+    const bodyPx = g.frameWidth * 0.85;
+    const minDy = Math.round(g.frameHeight * 0.42);
+    const ys = states.map((s) => this.laneY(s.lane));
+    for (let iter = 0; iter < 8; iter++) {
+      for (let a = 0; a < ys.length; a++) {
+        for (let b = a + 1; b < ys.length; b++) {
+          const dx = Math.abs(states[a].d - states[b].d) * ppm;
+          if (dx >= bodyPx) continue;
+          const need = minDy * (1 - dx / bodyPx) + 2;
+          const dy = ys[a] - ys[b];
+          if (Math.abs(dy) >= need) continue;
+          const sign = dy !== 0 ? Math.sign(dy) : (states[a].lane < states[b].lane ? 1 : -1);
+          const push = (need - Math.abs(dy)) / 2;
+          ys[a] += sign * push;
+          ys[b] -= sign * push;
+        }
+      }
+      for (let k = 0; k < ys.length; k++) ys[k] = Math.max(wideLaneY - 8, Math.min(railLaneY + 2, ys[k]));
+    }
+    if (!this.dispY || snap || simStep > 1) this.dispY = ys.slice();
+    else this.dispY = this.dispY.map((y, k) => y + (ys[k] - y) * Math.min(1, simStep * 6));
+    return this.dispY;
   }
 
   screenX(d) {
@@ -114,15 +148,16 @@ export class RaceView {
     if (trapsOpen) drawTraps();
 
     // ---- dogs (far lanes first so nearer dogs overlap them) ---------------------------
-    const order = states.map((s, i) => ({ ...s, i })).sort((a, b) => b.lane - a.lane);
     const g = this.assets.sprites.greyhound;
     const j = this.assets.sprites.jacket;
+    const dispY = this.displayYs(states, g, simStep, opts.snap);
+    const order = states.map((s, i) => ({ ...s, i, y: dispY[i] })).sort((a, b) => a.y - b.y);
     for (const s of order) {
       const runner = race.runners[s.i];
       this.anim[s.i] = (this.anim[s.i] + (s.v / (g.metresPerCycle || 4.6)) * g.frames * simStep) % g.frames;
       const frame = s.v < 0.3 ? 0 : Math.floor(this.anim[s.i]);
       const x = this.screenX(s.d) - g.anchorX;
-      const y = Math.round(this.laneY(s.lane)) - g.anchorY;
+      const y = Math.round(s.y) - g.anchorY;
       if (x < -g.frameWidth || x > view.width) continue;
       ctx.fillStyle = 'rgba(60,36,16,0.35)';
       const shadowW = Math.round(g.frameWidth * 0.5);

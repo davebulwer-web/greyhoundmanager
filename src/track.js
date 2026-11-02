@@ -11,24 +11,14 @@
 
 export const RACING_WIDTH = 3.6; // metres from the rail to the widest racing line (lane 1)
 
-export const TRACKS = [
-  {
-    id: 'kestrel', name: 'Kestrel Park', straight: 88, radius: 36, finishBeforeBend: 12,
-    distances: [270, 460, 500, 640], description: 'A galloping, fair track with long straights.',
-  },
-  {
-    id: 'marsh', name: 'Marsh Lane', straight: 70, radius: 33, finishBeforeBend: 9,
-    distances: [250, 400, 465, 600], description: 'Tight bends that suit sharp railers.',
-  },
-  {
-    id: 'ashby', name: 'Ashby Vale', straight: 95, radius: 39, finishBeforeBend: 14,
-    distances: [290, 480, 525, 690], description: 'Big, wide and stamina sapping.',
-  },
-  {
-    id: 'harbour', name: 'Harbour Road', straight: 80, radius: 35, finishBeforeBend: 10,
-    distances: [265, 450, 515, 630], description: 'A sandy, slightly slow surface.',
-  },
-];
+// The tracks themselves live in data/tracks.json so they can be edited without
+// touching code. loadGameData() (src/data.js) fills this list at start-up.
+export const TRACKS = [];
+
+export function setTracks(list) {
+  TRACKS.length = 0;
+  for (const t of list) TRACKS.push({ goingBase: 0, description: '', ...t });
+}
 
 export function trackById(id) {
   return TRACKS.find((t) => t.id === id) || TRACKS[0];

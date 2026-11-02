@@ -10,37 +10,48 @@ export const STYLES = {
   wide: { label: 'Wide', lane: 0.6 },
 };
 
-const FIRST = [
-  'Swift', 'Silver', 'Copper', 'Midnight', 'Rapid', 'Lucky', 'Velvet', 'Rusty', 'Storm', 'Brave',
-  'Misty', 'Jet', 'Pepper', 'Ballyclare', 'Shady', 'Hollow', 'Golden', 'Blazing', 'Quiet', 'Ruby',
-  'Northern', 'Crafty', 'Dancing', 'Willow', 'Smokey', 'Rocky', 'Fearless', 'Gentle', 'Dusty', 'Clever',
-];
-const SECOND = [
-  'Arrow', 'Comet', 'Lad', 'Lass', 'Flyer', 'Rocket', 'Dancer', 'Echo', 'Spirit', 'Rascal',
-  'Bandit', 'Breeze', 'Legend', 'Whisper', 'Jester', 'Monarch', 'Biscuit', 'Gambler', 'Pilot', 'Shadow',
-  'Duchess', 'Rebel', 'Sparks', 'Voyager', 'Tornado', 'Bramble', 'Nugget', 'Outlaw', 'Ember', 'Ranger',
-];
+// Name words come from data/names.json (loaded by src/data.js).
+let NAMES = { firstWords: ['Unnamed'], secondWords: ['Dog'], trainerFirstNames: ['A.'], trainerSurnames: ['Trainer'] };
+export function setNames(names) {
+  NAMES = { ...NAMES, ...names };
+}
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-export function makeDogName(rng, taken = new Set()) {
-  for (let i = 0; i < 50; i++) {
-    const name = `${rng.pick(FIRST)} ${rng.pick(SECOND)}`;
+/** A kennel's first word, shared by every dog it breeds. */
+export function pickFirstWord(rng) {
+  return rng.pick(NAMES.firstWords);
+}
+
+/** A dog name. Pass `first` to keep a kennel's first word (litter mates). */
+export function makeDogName(rng, taken = new Set(), first = null) {
+  for (let i = 0; i < 60; i++) {
+    const name = `${first || rng.pick(NAMES.firstWords)} ${rng.pick(NAMES.secondWords)}`;
     if (!taken.has(name)) { taken.add(name); return name; }
   }
-  return `${rng.pick(FIRST)} ${rng.pick(SECOND)} ${rng.int(2, 9)}`;
+  const name = `${first || rng.pick(NAMES.firstWords)} ${rng.pick(NAMES.secondWords)} ${rng.int(2, 99)}`;
+  taken.add(name);
+  return name;
+}
+
+export function makeTrainerName(rng, taken = new Set()) {
+  for (let i = 0; i < 60; i++) {
+    const name = `${rng.pick(NAMES.trainerFirstNames)} ${rng.pick(NAMES.trainerSurnames)}`;
+    if (!taken.has(name)) { taken.add(name); return name; }
+  }
+  return `${rng.pick(NAMES.trainerFirstNames)} ${rng.pick(NAMES.trainerSurnames)}`;
 }
 
 /**
  * Create a random dog. `quality` (0-100) shifts all attributes so you can
  * build graded fields of similar ability.
  */
-export function makeDog(rng, { quality = 50, taken } = {}) {
+export function makeDog(rng, { quality = 50, taken, firstWord = null } = {}) {
   const stat = (spread = 18) => Math.round(clamp(quality + rng.normal() * spread, 5, 98));
   const sex = rng.chance(0.5) ? 'Dog' : 'Bitch';
   return {
     id: `d${Math.floor(rng.next() * 1e9).toString(36)}`,
-    name: makeDogName(rng, taken),
+    name: makeDogName(rng, taken, firstWord),
     sex,
     age: rng.int(2, 5),
     coat: rng.pick(COATS),

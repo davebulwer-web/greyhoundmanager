@@ -4,6 +4,9 @@ import { makeRng } from '../src/rng.js';
 import { makeField, overallRating } from '../src/dogs.js';
 import { TRACKS } from '../src/track.js';
 import { simulateRace } from '../src/sim.js';
+import { loadGameData } from '../src/data.js';
+
+await loadGameData();
 
 const N = +(process.argv[2] || 600);
 const rng = makeRng(12345);

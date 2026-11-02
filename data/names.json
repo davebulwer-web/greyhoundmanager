@@ -1,0 +1,26 @@
+{
+  "_readme": "Words used to make greyhound names: one word from firstWords, then one from secondWords. Dogs bred by the same kennel share a first word (like a family name), so litter mates come out as e.g. 'Tinker's Comet' and 'Tinker's Echo'. Add, remove or change any words. Keep the quotes and commas. Trainer names are made the same way from trainerFirstNames and trainerSurnames.",
+  "firstWords": [
+    "Tinker's", "Sleepy", "Mustard", "Gorse", "Puddle's", "Copper", "Midnight", "Velvet", "Rusty", "Misty",
+    "Pepper", "Shady", "Hollow", "Golden", "Quiet", "Northern", "Crafty", "Willow", "Smokey", "Dusty",
+    "Bramble", "Cobbler's", "Fennel", "Marigold", "Tumble", "Lantern", "Nutmeg", "Ivy's", "Sorrel", "Juniper",
+    "Mossy", "Saffron", "Hazel's", "Pocket", "Biscuit's", "Thistle", "Clover", "Ember's", "Barley", "Wren's",
+    "Cinder", "Mallow", "Rascal's", "Teasel", "Pebble", "Hopscotch", "Duffy's", "Sparrow", "Kipper's", "Muddle"
+  ],
+  "secondWords": [
+    "Arrow", "Comet", "Lad", "Lass", "Flyer", "Rocket", "Dancer", "Echo", "Spirit", "Rascal",
+    "Bandit", "Breeze", "Legend", "Whisper", "Jester", "Monarch", "Gambler", "Pilot", "Shadow", "Duchess",
+    "Rebel", "Sparks", "Voyager", "Tornado", "Nugget", "Outlaw", "Ranger", "Dash", "Blur", "Bolt",
+    "Charm", "Dream", "Folly", "Gem", "Hero", "Jewel", "Knight", "Lightning", "Magic", "Mischief",
+    "Notion", "Promise", "Quest", "Rover", "Secret", "Treasure", "Venture", "Wonder", "Zephyr", "Surprise",
+    "Boy", "Girl", "Star", "Delight", "Express", "Flash", "Glory", "Hurricane", "Patch", "Rumour"
+  ],
+  "trainerFirstNames": [
+    "Alan", "Bev", "Colin", "Dot", "Eddie", "Fran", "Gordon", "Hilda", "Ian", "Jean",
+    "Ken", "Lorna", "Mick", "Nora", "Owen", "Pat", "Ray", "Sandra", "Terry", "Val"
+  ],
+  "trainerSurnames": [
+    "Ashworth", "Bellamy", "Crowther", "Dunmore", "Ellery", "Fairbairn", "Gillow", "Hartop", "Inskip", "Jowett",
+    "Kettley", "Lumb", "Marlow", "Nuttall", "Oxley", "Pegg", "Quayle", "Rudd", "Snape", "Thwaite"
+  ]
+}

@@ -1,8 +1,9 @@
-// Loads the editable game data in data/*.json (dog names, tracks).
+// Loads the editable game data in data/*.json (dog names, tracks, competitions).
 // Works in the browser (fetch) and in Node (for the test tools), no DOM code.
 
 import { setTracks } from './track.js';
 import { setNames } from './dogs.js';
+import { setCups } from './cups.js';
 
 async function readJson(name) {
   if (typeof window === 'undefined') {
@@ -19,8 +20,9 @@ async function readJson(name) {
 }
 
 export async function loadGameData() {
-  const [names, tracks] = await Promise.all([readJson('names.json'), readJson('tracks.json')]);
+  const [names, tracks, comps] = await Promise.all([readJson('names.json'), readJson('tracks.json'), readJson('competitions.json')]);
   setNames(names);
   setTracks(tracks.tracks);
-  return { names, tracks: tracks.tracks };
+  setCups(comps.cups);
+  return { names, tracks: tracks.tracks, cups: comps.cups };
 }

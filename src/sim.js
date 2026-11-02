@@ -349,6 +349,7 @@ function buildResult({ track, distance, going, seed, field, frames, markers, fir
       bendFigures: bendPositions.join(''),
       comments: buildComments(r, position, bendPositions, field.length),
       reaction: +r.reaction.toFixed(2),
+      events: r.events.map((e) => ({ type: e.type, where: e.where, t: +e.t.toFixed(2) })),
       dayForm: r.dayForm,
     };
   });

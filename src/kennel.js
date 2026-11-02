@@ -5,6 +5,10 @@ import { makeRng } from './rng.js';
 import { makeDog, overallRating } from './dogs.js';
 import { trackById } from './track.js';
 import { simulateRace } from './sim.js';
+import { breedingDay, newSeason, isNewSeason } from './breeding.js';
+import { cupById } from './cups.js';
+
+const cupHost = (inst) => cupById(inst.cupId).trackId;
 import {
   CLASSES, trackState, standardTime, addLedger, isMine, finishToday, calcTime, tracksRacingOn, todaysMeeting,
 } from './world.js';
@@ -52,7 +56,7 @@ export function myDogs(world) {
 }
 
 /** Turn a dog into one of yours (sets up training, fitness and its hidden potential). */
-function takeOn(world, dog) {
+export function takeOn(world, dog) {
   const rng = makeRng(hashStr(`${world.seed}:${dog.id}:potential`));
   dog.owner = 'player';
   dog.trainer = world.player.name;
@@ -131,7 +135,7 @@ export function salesList(world) {
 }
 
 /** Grade an unraced dog from its ability, the way a racing manager would from trials. */
-function gradeNewDog(ts, dog) {
+export function gradeNewDog(ts, dog) {
   const cls = CLASSES[dog.classKey];
   const distance = trackById(ts.trackId).distances[cls.distIndex];
   const same = ts.dogs.filter((d) => d.classKey === dog.classKey);
@@ -196,6 +200,13 @@ export function advanceDay(world) {
   // Your home track's meeting goes ahead whether or not you go.
   const home = world.player.homeTrack;
   if (tracksRacingOn(world.day).some((t) => t.id === home)) todaysMeeting(world, home);
+  // So do competition rounds your dogs are in, wherever they are.
+  for (const inst of world.cups || []) {
+    const round = Object.keys(inst.days).find((r) => inst.days[r] === world.day);
+    if (!round) continue;
+    const ids = round === 'heats' ? inst.playerEntries : [inst.field[round]].flat(2).filter(Boolean);
+    if (ids.some((id) => myDogs(world).some((d) => d.id === id))) todaysMeeting(world, cupHost(inst));
+  }
   const notes = finishToday(world);
   const dogs = myDogs(world);
   let bills = 0;
@@ -214,7 +225,9 @@ export function advanceDay(world) {
     }
     bills += ECONOMY.upkeepPerDay + plan.cost;
   }
-  if (bills) addLedger(world, `Kennel bills for ${dogs.length} dog${dogs.length === 1 ? '' : 's'}`, -bills);
+  const breedingBills = breedingDay(world);
+  if (bills + breedingBills) addLedger(world, `Kennel bills for ${dogs.length} dog${dogs.length === 1 ? '' : 's'}${breedingBills ? ' plus pups and retired dogs' : ''}`, -(bills + breedingBills));
   world.day++;
+  if (isNewSeason(world.day)) newSeason(world);
   return notes;
 }

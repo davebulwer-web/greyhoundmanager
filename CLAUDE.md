@@ -9,3 +9,4 @@
 - Editable data (dog names, trainer names, tracks) lives in `data/*.json`, each with a `_readme` key; don't move it back into code.
 - `src/kennel.js` and `src/save.js` (serialize/deserialize) must stay DOM-free too. After changing them, run `node tools/kenneltest.mjs 90`: a kennel of cheap dogs should roughly break even, training should add a few points to the trained abilities, and the save must load back (save size well under 2 MB).
 - Within a day dogs' abilities and fitness must not change (they change overnight in `advanceDay`), because races are worked out before they're shown and replays re-run them.
+- `src/breeding.js`, `src/cups.js` and `src/commentary.js` are DOM-free too; `tools/kenneltest.mjs` also runs a season of breeding, competitions and ageing.

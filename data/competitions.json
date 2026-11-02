@@ -1,0 +1,21 @@
+{
+  "_readme": "The big competitions. Each one is held once a season (a season is 120 days) at its track: 24 dogs run in 4 heats, the first 3 in each heat go into 2 semi-finals, and the first 3 in each semi make the final. classKey is the kind of race: sprint, standard or stay. dayInSeason is roughly when the heats are run (moved to the track's next racing night). entryFee is what you pay to enter a dog. prizes are for 1st to 6th in the final. Change names, fees and prizes freely; keep the quotes and commas.",
+  "cups": [
+    {
+      "id": "silverlead", "name": "Silver Lead", "trackId": "kestrel", "classKey": "standard",
+      "dayInSeason": 24, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]
+    },
+    {
+      "id": "sprintbowl", "name": "Marsh Sprint Bowl", "trackId": "marsh", "classKey": "sprint",
+      "dayInSeason": 46, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
+    },
+    {
+      "id": "longhaul", "name": "Ashby Long Haul", "trackId": "ashby", "classKey": "stay",
+      "dayInSeason": 70, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
+    },
+    {
+      "id": "lantern", "name": "Harbour Lantern", "trackId": "harbour", "classKey": "standard",
+      "dayInSeason": 94, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]
+    }
+  ]
+}

@@ -7,8 +7,8 @@ Train a kennel, study the form, bet, and watch the races unfold.
 
 1. **Race simulation** (done): animated races with placeholder pixel art, live leaderboard and track map, results with form figures.
 2. **Racecards, form and betting** (done): a pool of dogs and tracks, race history, form cards and odds.
-3. **Your kennel** (this step): buying dogs, training, entering races, money and a calendar, saved in the browser.
-4. **Depth and polish**: breeding, grades and competitions, final art.
+3. **Your kennel** (done): buying dogs, training, entering races, money and a calendar, saved in the browser.
+4. **Depth and polish** (this step): breeding, grades and competitions, final art.
 
 ## Playing it
 
@@ -30,6 +30,10 @@ then open <http://localhost:8000>. It also works on GitHub Pages
 | `src/world.js` | The racing world: each track's dogs and trainers, meetings every other night, grading, and every dog's form. |
 | `src/market.js` | The bookmaker: prices each race from the form only (never the hidden abilities), plus forecast and tricast dividends. `MARKET` at the top holds its numbers. |
 | `src/kennel.js` | Your kennel: buying and selling, training, fitness, kennel bills and moving the calendar on. `ECONOMY` and `TRAINING` at the top hold the numbers. |
+| `src/breeding.js` | Seasons (ageing and retirement), brood bitches, the stud book, litters and pups. `BREEDING` at the top holds the numbers. |
+| `src/cups.js` | Competitions: heats, semi-finals and finals, once a season at each track. |
+| `src/commentary.js` | Writes the race commentary from the race engine's output. |
+| `data/competitions.json` | The competitions: name, track, distance type, timing, entry fee and prizes. Edit freely. |
 | `src/save.js` | Saving in the browser, and save files to download or load. |
 | `src/betting.js` | Bet types (win, each way, forecast, reverse forecast, tricast) and how they pay. |
 | `data/names.json` | Words for dog names (first word, second word) and trainer names. Edit freely. |
@@ -94,3 +98,22 @@ You pick a kennel name and a home track, and start with £1,500 and one modest d
 - **Bills**: £4 a day per dog, plus £2 a day for special training.
 - **Saving**: the game saves itself in the browser after every race and every day.
   *Save & load* lets you download a save file as a backup and load it back.
+
+## Seasons, breeding and competitions
+
+- **Seasons**: every 120 days every dog is a year older. Two and three year olds
+  still improve, five year olds slow down, and dogs retire at six (other kennels'
+  dogs sometimes at five). Each track's retired dogs are replaced by youngsters.
+- **Breeding**: retire a bitch from the Kennel to breed from her, and a dog to
+  stand him at stud. Mate a brood bitch with one of your stud dogs (free) or a
+  top dog at your track (stud fee). Pups arrive 21 days later named with your
+  kennel prefix, take after both parents with some luck, and join the kennel
+  60 days after that, graded from their trials.
+- **Competitions** (`data/competitions.json`): four a season, one at each track.
+  Enter up to six dogs. 24 dogs run in 4 heats, and the first 3 in each go
+  through to 2 semi-finals. The first 3 in each semi make the final, which has
+  big prizes. Winners go in your trophy cabinet.
+- **Commentary** runs along the bottom of the race screen. The race screen has a
+  full-screen button in its top left corner.
+- **Skip a week** moves the calendar on 7 days. Races you're not watching are
+  run for you.

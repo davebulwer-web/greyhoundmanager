@@ -2,7 +2,7 @@
 // drive the race simulation. The player never sees these numbers directly in
 // the finished game; they have to read them from form, trials and trainers.
 
-export const COATS = ['black', 'blue', 'fawn', 'brindle', 'white-black'];
+export const COATS = ['black', 'blue', 'fawn', 'red-fawn', 'brindle', 'white-black'];
 
 export const STYLES = {
   rail: { label: 'Railer', lane: 0.04 },

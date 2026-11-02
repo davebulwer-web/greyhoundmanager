@@ -2,6 +2,42 @@
   "_readme": "Lists every image the game loads. Replace any PNG in assets/sprites with your own art of the SAME size and layout, or change the numbers here to match your new art. See ART_GUIDE.md.",
   "sprites": {
     "greyhound": {
+      "file": "sprites/greyhound_coats_run.png",
+      "frameWidth": 77,
+      "frameHeight": 37,
+      "frames": 8,
+      "rowsBy": "coat",
+      "rows": [
+        "black",
+        "blue",
+        "fawn",
+        "red-fawn",
+        "brindle",
+        "white-black"
+      ],
+      "anchorX": 38,
+      "anchorY": 35,
+      "metresPerCycle": 6,
+      "notes": "Made from Dave's grey Copilot dog (assets/source/greyhound_grey_designer.png) by tools/import_grey_greyhound.py: one row per coat colour, 8-frame gallop, no jacket."
+    },
+    "jacket": {
+      "file": "sprites/jackets_coats_run.png",
+      "frameWidth": 77,
+      "frameHeight": 37,
+      "frames": 8,
+      "rows": [
+        "trap1",
+        "trap2",
+        "trap3",
+        "trap4",
+        "trap5",
+        "trap6"
+      ],
+      "anchorX": 38,
+      "anchorY": 35,
+      "notes": "Jackets with numbers, worked out from the dog's outline in each frame by the same tool, so they line up exactly with greyhound_coats_run.png."
+    },
+    "greyhoundPainted": {
       "file": "sprites/greyhound_trap_run.png",
       "frameWidth": 64,
       "frameHeight": 45,
@@ -18,7 +54,8 @@
       "anchorX": 34,
       "anchorY": 41,
       "metresPerCycle": 9,
-      "notes": "Dave's sheet, converted by tools/import_greyhound_sheet.py from assets/source/greyhound_sheet_designer.png. One row per trap with the jacket painted on, 12-frame gallop. To go back to the placeholder art, swap this entry for 'greyhoundPlaceholder' below and rename it 'greyhound'."
+      "notes": "Dave's sheet, converted by tools/import_greyhound_sheet.py from assets/source/greyhound_sheet_designer.png. One row per trap with the jacket painted on, 12-frame gallop. To go back to the placeholder art, swap this entry for 'greyhoundPlaceholder' below and rename it 'greyhound'.",
+      "unused": true
     },
     "greyhoundPlaceholder": {
       "file": "sprites/greyhound_run.png",
@@ -38,7 +75,7 @@
       "rowsBy": "coat",
       "unused": true
     },
-    "jacket": {
+    "jacketPlaceholder": {
       "file": "sprites/jackets_run.png",
       "frameWidth": 48,
       "frameHeight": 24,
@@ -53,7 +90,8 @@
       ],
       "anchorX": 24,
       "anchorY": 23,
-      "notes": "Racing jackets drawn on their own, on a transparent background, lined up exactly over the matching greyhound frame."
+      "notes": "Racing jackets drawn on their own, on a transparent background, lined up exactly over the matching greyhound frame.",
+      "unused": true
     },
     "hare": {
       "file": "sprites/hare.png",

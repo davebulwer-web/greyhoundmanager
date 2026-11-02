@@ -34,23 +34,28 @@ The race screen is **640 x 240 pixels**. One metre of track is 16 pixels.
 | `rail_near.png` | 32 x 18 | Inside rail with the hare rail. Drawn in front of the dogs. |
 | `grass.png` | 32 x 8 | Strip of grass at the bottom. Drawn in front. |
 
-## Greyhounds with the jacket painted on
+## Greyhounds (current art)
 
-The game currently uses **`greyhound_trap_run.png`** (768 x 270): 12 frames of
-64 x 45 across, one row per trap 1 to 6, with each dog already wearing its jacket.
-It was made from Dave's sheet in `assets/source/` by:
+The game uses **`greyhound_coats_run.png`** (one row per coat: black, blue, fawn,
+red fawn, brindle, white & black) and **`jackets_coats_run.png`** (one row per trap,
+jacket and number), both 8 frames of 77 x 37. Both are made from ONE plain grey
+Copilot dog on a magenta background, kept in `assets/source/`:
 
-    python3 tools/import_greyhound_sheet.py assets/source/greyhound_sheet_designer.png
+    python3 tools/import_grey_greyhound.py assets/source/greyhound_grey_designer.png
 
-That script cuts each dog out of the black background, lines every frame up on
-the jacket so the body stays steady, shrinks it and adds an outline. Use it again
-for a new sheet laid out the same way (6 rows, 12 dogs per row, black background).
+The tool cuts the dog out, lines the frames up on the body, shrinks it, tints it
+to each coat colour and works out the jacket shape from the dog's outline in each
+frame, so jackets and patches always fit. To add a coat colour, add it to `COATS`
+in the tool, to `COATS` in `src/dogs.js` and to the `rows` list in the manifest.
+The prompts used are in the project files (`art/copilot-greyhound-prompts.md`).
 
-In `assets/manifest.json`, `"rowsBy": "trap"` tells the game the jackets are
-painted on, and `metresPerCycle` is how far a dog runs during one loop of the
-frames (raise it if the legs look too fast). The older placeholder sheet with
-separate jackets (`greyhound_run.png` + `jackets_run.png`, one row per coat
-colour) still works: point the `greyhound` entry back at it with `"rowsBy": "coat"`.
+`metresPerCycle` in the manifest is how far a dog runs during one loop of the
+frames: raise it if the legs look too fast.
+
+Older art is kept in the manifest but not used: `greyhoundPainted` (Dave's first
+sheet with jackets painted on, `"rowsBy": "trap"`, made by
+`tools/import_greyhound_sheet.py`) and the generated placeholders. To switch,
+rename the entry you want to `greyhound` (and its jacket entry to `jacket`).
 
 ## Greyhound frames (placeholder sheet)
 

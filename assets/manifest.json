@@ -17,7 +17,7 @@
       ],
       "anchorX": 38,
       "anchorY": 35,
-      "metresPerCycle": 6,
+      "metresPerCycle": 11,
       "notes": "Made from Dave's grey Copilot dog (assets/source/greyhound_grey_designer.png) by tools/import_grey_greyhound.py: one row per coat colour, 8-frame gallop, no jacket."
     },
     "jacket": {

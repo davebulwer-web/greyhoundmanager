@@ -2,7 +2,9 @@
 Builds the recolourable greyhound art from ONE plain grey greyhound sheet
 (Copilot sheet, dog on a magenta background, 8 frames in a row):
 
-    python3 tools/import_grey_greyhound.py assets/source/greyhound_grey_designer.png
+    python3 tools/import_grey_greyhound.py assets/source/greyhound_grey_designer.png [frames]
+
+Pass the number of frames if the dogs in the sheet touch each other.
 
 It writes two sheets that line up frame for frame:
 
@@ -99,8 +101,22 @@ def torso(mask):
     return x0, x1, back
 
 
-def find_frames(mask):
+def find_frames(mask, expected=None):
     col = mask.sum(axis=0)
+    if expected:
+        # Dogs may touch (tail to nose), so cut at the thinnest column near
+        # each evenly spaced boundary instead of looking for gaps.
+        xs = np.nonzero(col > 2)[0]
+        start, end = xs.min(), xs.max() + 1
+        step = (end - start) / expected
+        cuts = [start]
+        for k in range(1, expected):
+            c = int(start + k * step)
+            w = int(step * 0.3)
+            lo, hi = c - w, c + w
+            cuts.append(lo + int(np.argmin(col[lo:hi])))
+        cuts.append(end)
+        return list(zip(cuts[:-1], cuts[1:]))
     segs, inside = [], False
     for x, v in enumerate(col):
         if v > 2 and not inside:
@@ -119,7 +135,8 @@ def main():
     fg = ~background
     fg[:, :4] = fg[:, -4:] = False
     fg[:4, :] = fg[-4:, :] = False
-    frames = find_frames(fg)
+    expected = int(sys.argv[2]) if len(sys.argv) > 2 else None
+    frames = find_frames(fg, expected)
     print("frames found:", len(frames), frames)
 
     cuts = []

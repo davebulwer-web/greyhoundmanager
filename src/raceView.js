@@ -27,6 +27,7 @@ export class RaceView {
     this.anim = race.runners.map((_, i) => (i * 3) % 8);
     this.lastT = -PRE_START;
     this.dispY = null;
+    this.sides = null;
   }
 
   startCam() {
@@ -73,19 +74,32 @@ export class RaceView {
     const bodyPx = g.frameWidth * 0.85;
     const minDy = Math.round(g.frameHeight * 0.42);
     const ys = states.map((s) => this.laneY(s.lane));
-    for (let iter = 0; iter < 8; iter++) {
-      for (let a = 0; a < ys.length; a++) {
-        for (let b = a + 1; b < ys.length; b++) {
-          const dx = Math.abs(states[a].d - states[b].d) * ppm;
-          if (dx >= bodyPx) continue;
-          const need = minDy * (1 - dx / bodyPx) + 2;
-          const dy = ys[a] - ys[b];
-          if (Math.abs(dy) >= need) continue;
-          const sign = dy !== 0 ? Math.sign(dy) : (states[a].lane < states[b].lane ? 1 : -1);
-          const push = (need - Math.abs(dy)) / 2;
-          ys[a] += sign * push;
-          ys[b] -= sign * push;
+    if (!this.sides || snap || simStep > 1) this.sides = new Map();
+    const prev = this.dispY && !snap && simStep <= 1 ? this.dispY : ys;
+
+    // While two dogs overlap on screen, each keeps the side (nearer or further
+    // from the camera) it had when they first overlapped. They can only swap
+    // once they are clear of each other, so nobody passes through anybody.
+    const overlapping = [];
+    for (let a = 0; a < ys.length; a++) {
+      for (let b = a + 1; b < ys.length; b++) {
+        const key = a * 8 + b;
+        const dx = Math.abs(states[a].d - states[b].d) * ppm;
+        if (dx >= bodyPx) { this.sides.delete(key); continue; }
+        if (!this.sides.has(key)) {
+          const dy = prev[a] - prev[b];
+          this.sides.set(key, dy !== 0 ? Math.sign(dy) : (states[a].lane < states[b].lane ? 1 : -1));
         }
+        overlapping.push([a, b, this.sides.get(key), minDy * (1 - dx / bodyPx) + 2]);
+      }
+    }
+    for (let iter = 0; iter < 8; iter++) {
+      for (const [a, b, side, need] of overlapping) {
+        const gap = side * (ys[a] - ys[b]);
+        if (gap >= need) continue;
+        const push = (need - gap) / 2;
+        ys[a] += side * push;
+        ys[b] -= side * push;
       }
       for (let k = 0; k < ys.length; k++) ys[k] = Math.max(wideLaneY - 8, Math.min(railLaneY + 2, ys[k]));
     }

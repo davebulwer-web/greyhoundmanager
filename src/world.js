@@ -9,6 +9,7 @@ import { makeDog, pickFirstWord, makeTrainerName, overallRating } from './dogs.j
 import { TRACKS, trackById } from './track.js';
 import { simulateRace, TUNING, SECONDS_PER_LENGTH, formatMargin } from './sim.js';
 import { priceRace } from './market.js';
+import { settleBet, betCost, describeBet } from './betting.js';
 
 /** Race classes: sprint (D grades), standard (A grades), stayers (S grades). */
 export const CLASSES = {
@@ -57,8 +58,33 @@ export function tracksRacingOn(day) {
   return TRACKS.filter((_, i) => i % 2 === day % 2);
 }
 
-export function createWorld(seed) {
-  return { seed, day: HISTORY_DAYS, balance: 1000, tracks: {}, betLog: [] };
+export const START_MONEY = 1500;
+
+/**
+ * A new world. `player` is { name, homeTrack }: your kennel's name and the
+ * track your dogs are attached to.
+ */
+export function createWorld(seed, player = { name: 'My Kennel', homeTrack: TRACKS[0].id }) {
+  return {
+    version: 1, seed, day: HISTORY_DAYS, balance: START_MONEY, tracks: {},
+    player: { ...player }, ledger: [], sales: null, nextId: 1,
+  };
+}
+
+/** Add a line to your accounts and change your money. */
+export function addLedger(world, text, amount) {
+  world.balance = +(world.balance + amount).toFixed(2);
+  world.ledger.unshift({ day: world.day, text, amount: +amount.toFixed(2) });
+  if (world.ledger.length > 300) world.ledger.length = 300;
+}
+
+export const isMine = (dog) => dog.owner === 'player';
+
+/** Prize money for 1st, 2nd and 3rd, plus the appearance fee every runner gets. */
+export function prizes(classKey, grade) {
+  const level = classKey === 'standard' ? grade : 2 + grade; // D1/S1 pay like A3
+  const first = Math.round((220 - level * 15) / 5) * 5;
+  return { places: [first, Math.round(first * 0.35 / 5) * 5, Math.round(first * 0.2 / 5) * 5], runFee: 25 };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,18 +181,20 @@ export function getMeeting(world, trackId, day = world.day) {
 
   for (const classKey of MEETING_PLAN) {
     const cls = CLASSES[classKey];
-    const pool = ts.dogs.filter((d) => d.classKey === classKey && !used.has(d));
+    // Your dogs only run if you've entered them; they get first call on a race.
+    const pool = ts.dogs.filter((d) => d.classKey === classKey && !used.has(d) && !(isMine(d) && !d.entered));
     const rested = (d, rest) => day - d.lastRunDay >= rest;
     let field = null;
     for (const rest of [REST_DAYS, REST_DAYS - 1, 3]) {
-      const ready = pool.filter((d) => rested(d, rest));
+      const ready = pool.filter((d) => rested(d, isMine(d) ? REST_DAYS : rest));
       if (ready.length < 6) continue;
       // Pick the grade with the most dogs ready (a little randomness to vary the card).
       const counts = Array.from({ length: cls.grades }, (_, g) => ready.filter((d) => d.grade === g).length + rng.next());
-      const grade = counts.indexOf(Math.max(...counts));
+      const mine = ready.find((d) => isMine(d) && rested(d, REST_DAYS));
+      const grade = mine ? mine.grade : counts.indexOf(Math.max(...counts));
       // Fill from that grade first, then the grades either side.
       const byCloseness = [...ready].sort((a, b) =>
-        Math.abs(a.grade - grade) - Math.abs(b.grade - grade) || (a.lastRunDay - b.lastRunDay) || rng.next() - 0.5);
+        Math.abs(a.grade - grade) - Math.abs(b.grade - grade) || (isMine(b) - isMine(a)) || (a.lastRunDay - b.lastRunDay) || rng.next() - 0.5);
       field = { grade, dogs: byCloseness.slice(0, 6) };
       break;
     }
@@ -179,7 +207,7 @@ export function getMeeting(world, trackId, day = world.day) {
     const runners = seeded.map(({ dog }, i) => ({ trap: i + 1, dog }));
     races.push({
       classKey, grade: field.grade, gradeLabel: gradeLabel(classKey, field.grade),
-      distance: track.distances[cls.distIndex], runners, seed: rng.int(1, 1e9), result: null,
+      distance: track.distances[cls.distIndex], runners, seed: rng.int(1, 1e9), result: null, trackId,
     });
   }
   // Weakest races first, the best race of the night last.
@@ -208,17 +236,70 @@ export function nextRace(meeting) {
 }
 
 /** Run one race of a meeting and write everybody's form. */
-export function runRace(world, meeting, race, { keepFrames = true } = {}) {
+export function runRace(world, meeting, race, { keepFrames = false, sim = null } = {}) {
   const track = trackById(meeting.trackId);
   const ts = world.tracks[meeting.trackId];
-  const sim = simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
-  if (!keepFrames) delete sim.frames;
-  race.result = sim;
+  // `sim` lets the page pass in the run it has just shown, so the result always matches.
+  sim ||= simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
+  race.result = keepFrames ? sim : { ...sim, frames: undefined };
   recordForm(ts, meeting, race, sim);
+  payPrizes(world, race, sim);
   ts.lastMeetingDay = Math.max(ts.lastMeetingDay, meeting.day);
   // Drop old cards (keeps memory small); form lives on the dogs.
   for (const d of Object.keys(ts.meetings)) if (+d < meeting.day - 1) delete ts.meetings[d];
   return sim;
+}
+
+function payPrizes(world, race, sim) {
+  const { places, runFee } = prizes(race.classKey, race.grade);
+  for (const r of sim.results) {
+    if (!isMine(r.dog)) continue;
+    const prize = places[r.position - 1] || 0;
+    addLedger(world, `${r.dog.name} ran ${ordinal(r.position)} in race ${race.no} (${race.gradeLabel}): ${prize ? `£${prize} prize and ` : ''}£${runFee} appearance fee`, runFee + prize);
+    r.dog.earnings = (r.dog.earnings || 0) + runFee + prize;
+  }
+}
+
+export function ordinal(n) {
+  return `${n}${['th', 'st', 'nd', 'rd'][n] || 'th'}`;
+}
+
+/** Pay out every bet on a finished race. Returns a line of text per bet. */
+export function settleRace(world, race) {
+  const lines = [];
+  for (const bet of race.bets || []) {
+    if (bet.note) continue;
+    const { returned, note } = settleBet(bet, race);
+    bet.returned = +returned.toFixed(2);
+    bet.note = note;
+    if (bet.returned > 0) addLedger(world, `Bet won: race ${race.no}, ${describeBet(bet)}`, bet.returned);
+    lines.push(`Race ${race.no}: ${describeBet(bet)}, ${betCost(bet).toFixed(2)} staked, ${bet.returned > 0 ? `returned £${bet.returned.toFixed(2)}` : 'lost'}`);
+  }
+  return lines;
+}
+
+/** Run (and settle) any races left in today's meetings, e.g. before moving on a day. */
+export function finishToday(world) {
+  const lines = [];
+  for (const ts of Object.values(world.tracks)) {
+    const m = ts.meetings[world.day];
+    if (!m) continue;
+    for (const race of m.races) {
+      if (race.result) continue;
+      runRace(world, m, race, { keepFrames: false });
+      lines.push(...settleRace(world, race));
+    }
+  }
+  return lines;
+}
+
+/** 'none' (no card yet), 'open' (card made, no races run), 'started', or 'over'. */
+export function meetingStatus(world, trackId) {
+  const ts = world.tracks[trackId];
+  const m = ts && ts.meetings[world.day];
+  if (!m) return ts && ts.lastMeetingDay >= world.day ? 'over' : 'none';
+  const run = m.races.filter((r) => r.result).length;
+  return run === 0 ? 'open' : run === m.races.length ? 'over' : 'started';
 }
 
 export function calcTime(time, going) {

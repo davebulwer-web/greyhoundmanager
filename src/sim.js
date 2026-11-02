@@ -36,7 +36,13 @@ export const TUNING = {
   laneRateStraight: 0.22,
   laneRateBend: 0.10,
   goingEffect: 0.0003,   // speed change per point of going (+ is slow)
+  fitnessEffect: 0.00025, // speed lost per point of fitness below 100 (fitness 60 = 1% slower, about 3 lengths)
 };
+
+/** A tired dog (low fitness, 0-100) is slightly slower. Dogs without a fitness value are fully fit. */
+export function fitnessFactor(dog) {
+  return dog.fitness === undefined ? 1 : 1 - (100 - dog.fitness) * TUNING.fitnessEffect;
+}
 
 function fieldLaneForTrap(trap) {
   return 0.03 + (trap - 1) * 0.14;
@@ -58,7 +64,8 @@ function prepareRunner(rng, runner, track, going) {
   const vmax =
     (TUNING.baseTopSpeed + (s.topSpeed / 100) * TUNING.topSpeedRange) *
     (1 + dayForm) *
-    (1 - going * TUNING.goingEffect);
+    (1 - going * TUNING.goingEffect) *
+    fitnessFactor(dog);
 
   const tightness = (36 - track.radius) * 0.003; // tighter bends are harder for everyone
   const preferredLane = STYLES[dog.style]?.lane ?? 0.35;

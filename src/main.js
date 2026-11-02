@@ -1,64 +1,169 @@
-// Step 2: race meetings. Pick a meeting, read the racecards, place bets and
-// watch the races. Form, grades and prices carry on from meeting to meeting.
+// The game page: your kennel, the sales, the calendar, accounts, saving,
+// and race meetings (racecards, bets and the race screen).
 
 import { loadAssets } from './assets.js';
 import { loadGameData } from './data.js';
 import { randomSeed } from './rng.js';
 import { STYLES } from './dogs.js';
-import { trackById } from './track.js';
+import { TRACKS, trackById } from './track.js';
 import { simulateRace, DOG_LENGTH_M } from './sim.js';
 import { RaceView, PRE_START } from './raceView.js';
 import { MiniMap } from './minimap.js';
 import {
   createWorld, todaysMeeting, tracksRacingOn, runRace, nextRace, formatDay, formatShortDate,
-  formFigures, bestTime, penPicture, SEED_LETTER,
+  formFigures, bestTime, penPicture, SEED_LETTER, CLASSES, gradeLabel, settleRace, meetingStatus,
+  isMine, addLedger, ordinal, REST_DAYS, prizes,
 } from './world.js';
 import { dividends } from './market.js';
-import { BET_TYPES, betCost, describeBet, settleBet } from './betting.js';
+import { BET_TYPES, betCost, describeBet } from './betting.js';
+import {
+  advanceDay, giveStarterDog, salesList, buyDog, sellDog, sellPrice, myDogs, TRAINING, STAT_LABELS,
+  trainerStars, ECONOMY, RACE_FITNESS_COST,
+} from './kennel.js';
+import { saveGame, loadGame, exportSave, importSave, deleteSave } from './save.js';
 
 const $ = (id) => document.getElementById(id);
-const money = (x) => `£${x.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const money = (x) => `${x < 0 ? '-' : ''}£${Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const trapBadge = (trap) => `<span class="trap trap-${trap}">${trap}</span>`;
 const COAT_LABEL = { 'white-black': 'white & black', 'red-fawn': 'red fawn' };
+const CLASS_LABEL = { sprint: 'Sprinter', standard: 'Standard', stay: 'Stayer' };
 const STAT_KEYS = [['breakSpeed', 'Brk'], ['earlyPace', 'Early'], ['topSpeed', 'Speed'], ['stamina', 'Stam'], ['cornering', 'Bends'], ['consistency', 'Consist']];
+const SCREENS = ['screen-new', 'screen-lobby', 'screen-kennel', 'screen-sales', 'screen-calendar', 'screen-accounts', 'screen-game', 'screen-meeting', 'loading'];
 
 const state = {
   world: null, meeting: null, track: null,
   live: null,       // the race on the big screen
-  liveSim: null,    // its pre-computed run, for drawing
+  liveSim: null,    // its run, worked out in advance for drawing
   view: null,       // the race whose card / result is shown below
   t: -PRE_START, speed: 1, mode: 'pre', // pre | running | done
   lastFrame: 0,
   slip: { type: 'win', traps: [], stake: 5 },
-  visited: new Set(), // tracks already raced at today
+  newTrack: TRACKS[0]?.id,
+  confirm: null,    // a button waiting for a second click (sell, new game)
 };
 
+const save = () => saveGame(state.world);
+
 // ---------------------------------------------------------------------------
-// Screens
+// Screens and navigation
 
 function show(id) {
-  for (const s of ['screen-lobby', 'screen-meeting', 'loading']) $(s).classList.toggle('hidden', s !== id);
+  for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id);
+  document.querySelectorAll('#nav [data-screen]').forEach((b) => b.classList.toggle('on', b.dataset.screen === id
+    || (id === 'screen-meeting' && b.dataset.screen === 'screen-lobby')));
+  $('nav').classList.toggle('hidden', id === 'screen-new' || !state.world);
+  state.confirm = null;
+}
+
+const RENDER = {
+  'screen-lobby': () => showLobby(),
+  'screen-kennel': renderKennel,
+  'screen-sales': renderSales,
+  'screen-calendar': renderCalendar,
+  'screen-accounts': renderAccounts,
+  'screen-game': renderGame,
+};
+
+function go(id) {
+  if (id === 'screen-lobby' && state.meeting) { show('screen-meeting'); renderAll(); return; }
+  if (RENDER[id]) RENDER[id]();
+  if (id !== 'screen-lobby') show(id);
 }
 
 function updatePurse() {
+  if (!state.world) return;
   $('balance').textContent = money(state.world.balance);
-  $('today').textContent = formatDay(state.world.day);
+  $('balance').classList.toggle('lost', state.world.balance < 0);
+  $('today').textContent = `${formatDay(state.world.day)} · ${state.world.player.name}`;
 }
+
+// ---------------------------------------------------------------------------
+// New game
+
+function showNewGame() {
+  state.world = null;
+  $('today').textContent = 'New game';
+  $('balance').textContent = '£1,500.00';
+  $('new-tracks').innerHTML = TRACKS.map((t) => `
+    <button class="meeting-card pick-track ${t.id === state.newTrack ? 'on' : ''}" data-track="${t.id}">
+      <span class="meeting-card-name">${t.name}</span>
+      <span class="muted">${t.description}</span>
+      <span>Sprint ${t.distances[0]}m · Standard ${t.distances[1]}m · Stayers ${t.distances[2]}m</span>
+    </button>`).join('');
+  $('new-tracks').querySelectorAll('[data-track]').forEach((b) => b.addEventListener('click', () => {
+    state.newTrack = b.dataset.track;
+    showNewGame();
+  }));
+  show('screen-new');
+}
+
+function startNewGame() {
+  const name = $('new-name').value.trim() || 'My Kennel';
+  show('loading');
+  setTimeout(() => {
+    deleteSave();
+    state.world = createWorld(randomSeed(), { name, homeTrack: state.newTrack });
+    const dog = giveStarterDog(state.world);
+    save();
+    showLobby(`<b>Welcome to ${trackById(state.newTrack).name}.</b> Your first greyhound is <b>${dog.name}</b>, graded ${gradeLabel(dog.classKey, dog.grade)}. Have a look at the <b>Kennel</b>, then buy another dog or go racing.`);
+  }, 30);
+}
+
+async function loadFromFile(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    state.world = await importSave(file);
+    state.meeting = null;
+    save();
+    showLobby(`<b>Loaded.</b> Welcome back to ${state.world.player.name}.`);
+  } catch (err) {
+    const msg = `Could not load that file: ${err.message}`;
+    if ($('screen-game').classList.contains('hidden')) alertNote(msg); else $('game-msg').textContent = msg;
+  }
+}
+
+function alertNote(msg) {
+  $('lobby-note').textContent = msg;
+  $('lobby-note').classList.remove('hidden');
+}
+
+// ---------------------------------------------------------------------------
+// Racing lobby
 
 function showLobby(note = '') {
   const { world } = state;
   updatePurse();
   $('lobby-note').innerHTML = note;
   $('lobby-note').classList.toggle('hidden', !note);
-  $('lobby-meetings').innerHTML = tracksRacingOn(world.day).map((t) => `
-    <div class="meeting-card">
-      <div class="meeting-card-name">${t.name}</div>
+  const home = world.player.homeTrack;
+  const tonight = tracksRacingOn(world.day);
+  // Your runners tonight, if your home track is racing.
+  let runners = '';
+  if (tonight.some((t) => t.id === home) && myDogs(world).length) {
+    const m = todaysMeeting(world, home);
+    const mine = m.races.flatMap((r) => r.runners.filter((x) => isMine(x.dog)).map((x) => ({ r, x })));
+    runners = mine.length
+      ? `<div class="lobby-runners"><b>Your runners tonight at ${trackById(home).name}:</b> ${mine.map(({ r, x }) => `${x.dog.name} ${trapBadge(x.trap)} race ${r.no} (${r.time}, ${r.gradeLabel})`).join(' · ')}</div>`
+      : `<div class="lobby-runners muted">None of your dogs is running at ${trackById(home).name} tonight.</div>`;
+  } else if (myDogs(world).length) {
+    runners = `<div class="lobby-runners muted">${trackById(home).name} isn't racing tonight. Your dogs can run tomorrow.</div>`;
+  }
+  $('lobby-runners').innerHTML = runners;
+  $('lobby-meetings').innerHTML = tonight.map((t) => {
+    const status = meetingStatus(world, t.id);
+    const button = status === 'over'
+      ? '<div class="muted">Racing is over here tonight.</div>'
+      : `<button class="primary" data-track="${t.id}">${status === 'started' ? 'Back to the meeting' : 'Go racing'}</button>`;
+    return `
+    <div class="meeting-card ${t.id === home ? 'home' : ''}">
+      <div class="meeting-card-name">${t.name}${t.id === home ? ' <span class="home-tag">your track</span>' : ''}</div>
       <div class="muted">${t.description}</div>
       <div>Sprint ${t.distances[0]}m · Standard ${t.distances[1]}m · Stayers ${t.distances[2]}m</div>
-      ${state.visited.has(t.id)
-        ? '<div class="muted">You raced here tonight.</div>'
-        : `<button class="primary" data-track="${t.id}">Go racing</button>`}
-    </div>`).join('');
+      ${button}
+    </div>`;
+  }).join('');
   $('lobby-meetings').querySelectorAll('button[data-track]').forEach((b) =>
     b.addEventListener('click', () => enterMeeting(b.dataset.track)));
   show('screen-lobby');
@@ -66,38 +171,48 @@ function showLobby(note = '') {
 
 function enterMeeting(trackId) {
   show('loading');
-  // Let the "catching up" message paint before the background races run.
+  // Let the "catching up" message paint before any background races run.
   setTimeout(() => {
     state.meeting = todaysMeeting(state.world, trackId);
     state.track = trackById(trackId);
-    state.visited.add(trackId);
     const m = state.meeting;
     $('meeting-name').textContent = state.track.name;
     $('meeting-info').textContent = `${formatDay(m.day)} · Going ${m.going > 0 ? '+' : ''}${m.going} · ${m.races.length} races`;
     show('screen-meeting');
     goLive(nextRace(m));
+    save();
   }, 30);
 }
 
-/** Leave the meeting: any races left are run without you and bets settled. */
+/** Leave the meeting. The races carry on without you and run when the day ends. */
 function leaveMeeting() {
-  const m = state.meeting;
-  const lines = [];
-  for (const race of m.races) {
-    if (race.result) continue;
-    runRace(state.world, m, race);
-    lines.push(...settleRace(race));
-  }
+  if (state.mode === 'running') finishRace();
   state.mode = 'pre';
   state.meeting = null;
-  const note = lines.length ? `<b>Bets settled after you left ${state.track.name}:</b><br>${lines.join('<br>')}` : '';
-  showLobby(note);
+  document.body.classList.remove('racing-live');
+  save();
+  showLobby();
 }
 
 function nextDay() {
-  state.world.day++;
-  state.visited.clear();
-  showLobby();
+  if (state.mode === 'running') finishRace();
+  state.meeting = null;
+  state.mode = 'pre';
+  document.body.classList.remove('racing-live');
+  show('loading');
+  setTimeout(() => {
+    const before = state.world.balance;
+    const lines = advanceDay(state.world);
+    save();
+    const change = state.world.balance - before;
+    const notes = [];
+    if (lines.length) notes.push(`<b>Bets settled overnight:</b><br>${lines.join('<br>')}`);
+    notes.push(`Overnight your money went ${change >= 0 ? 'up' : 'down'} ${money(Math.abs(change))} (prizes, fees and kennel bills: see Accounts).`);
+    const tired = myDogs(state.world).filter((d) => d.fitness < 60);
+    if (tired.length) notes.push(`Looking tired: ${tired.map((d) => `${d.name} (fitness ${d.fitness})`).join(', ')}. Rest helps.`);
+    if (state.world.balance < 0) notes.push('<span class="lost">You are overdrawn. Sell a dog or win some bets.</span>');
+    showLobby(notes.join('<br>'));
+  }, 30);
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +250,8 @@ function setControls() {
   const more = state.meeting && nextRace(state.meeting);
   $('btn-next-race').classList.toggle('hidden', mode !== 'done');
   $('btn-next-race').textContent = more ? 'Next race' : 'Finish the meeting';
+  // While a race is running the race screen takes the whole width.
+  document.body.classList.toggle('racing-live', mode === 'running');
 }
 
 function startRace() {
@@ -143,14 +260,17 @@ function startRace() {
   state.mode = 'running';
   setControls();
   renderAll();
+  $('screen-meeting').scrollIntoView({ block: 'start', behavior: 'smooth' });
 }
 
 function finishRace() {
   const race = state.live;
   state.mode = 'done';
   if (!race.result) {
-    runRace(state.world, state.meeting, race);
-    settleRace(race);
+    runRace(state.world, state.meeting, race, { sim: state.liveSim });
+    settleRace(state.world, race);
+    updatePurse();
+    save();
   }
   const w = race.result.results[0];
   $('banner').innerHTML = `WINNER<br>${trapBadge(w.trap)} ${w.dog.name}<br>${w.time.toFixed(2)}s`;
@@ -158,20 +278,6 @@ function finishRace() {
   state.view = race;
   setControls();
   renderAll();
-}
-
-function settleRace(race) {
-  const lines = [];
-  for (const bet of race.bets || []) {
-    const { returned, note } = settleBet(bet, race);
-    bet.returned = +returned.toFixed(2);
-    bet.note = note;
-    state.world.balance += bet.returned;
-    state.world.betLog.push(bet);
-    lines.push(`Race ${race.no}: ${describeBet(bet)}, ${money(betCost(bet))} staked, ${bet.returned > 0 ? `returned ${money(bet.returned)}` : 'lost'}`);
-  }
-  updatePurse();
-  return lines;
 }
 
 function meetingOver() {
@@ -183,6 +289,7 @@ function meetingOver() {
     ? `<b>${state.track.name} is over.</b> You staked ${money(staked)} and got back ${money(back)}: ${back >= staked ? 'up' : 'down'} ${money(Math.abs(back - staked))} on the night.`
     : `<b>${state.track.name} is over.</b> No bets tonight.`;
   state.meeting = null;
+  save();
   showLobby(note);
 }
 
@@ -208,7 +315,8 @@ function render(snap = false) {
     if (state.t <= 0) gap = state.live.market.runners.find((m) => m.trap === r.runner.trap).odds;
     else if (r.d >= race.distance) gap = i === 0 ? res.time.toFixed(2) : res.margin;
     else if (i > 0) gap = `${((leadD - r.d) / DOG_LENGTH_M).toFixed(1)}L`;
-    return `<li><span class="pos">${state.t <= 0 ? '' : `${i + 1}.`}</span>${trapBadge(r.runner.trap)}<span>${r.runner.dog.name}</span><span class="gap">${gap}</span></li>`;
+    const mine = isMine(r.runner.dog) ? ' class="mine"' : '';
+    return `<li${mine}><span class="pos">${state.t <= 0 ? '' : `${i + 1}.`}</span>${trapBadge(r.runner.trap)}<span>${r.runner.dog.name}</span><span class="gap">${gap}</span></li>`;
   }).join('');
   const left = Math.max(0, Math.ceil(race.distance - leadD));
   $('dist-left').textContent = left > 0 ? `${left}m` : 'FINISH';
@@ -237,6 +345,7 @@ function loop() {
 // Race tabs, racecard, result and bet slip
 
 function renderAll() {
+  if (!state.meeting) return;
   renderTabs();
   renderCard();
   renderSlip();
@@ -244,14 +353,14 @@ function renderAll() {
 
 function renderTabs() {
   const m = state.meeting;
-  if (!m) return;
   $('race-tabs').innerHTML = m.races.map((r) => {
     const won = isRun(r) ? r.result.results[0].trap : null;
     const hasBets = (r.bets || []).length ? '<span class="tab-bet" title="You have a bet">£</span>' : '';
+    const hasMine = r.runners.some((x) => isMine(x.dog)) ? '<span class="tab-mine" title="Your dog runs">★</span>' : '';
     return `<button class="race-tab ${r === state.view ? 'on' : ''} ${r === state.live ? 'live' : ''}" data-no="${r.no}">
       <span class="tab-no">R${r.no}</span><span class="tab-time">${r.time}</span>
       <span class="tab-grade">${r.gradeLabel} ${r.distance}m</span>
-      <span class="tab-win">${won ? trapBadge(won) : ''}${hasBets}</span></button>`;
+      <span class="tab-win">${won ? trapBadge(won) : ''}${hasMine}${hasBets}</span></button>`;
   }).join('');
   $('race-tabs').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
     state.view = m.races[+b.dataset.no - 1];
@@ -265,9 +374,9 @@ function isRun(race) {
   return race.result && !(race === state.live && state.mode !== 'done');
 }
 
-function formLines(dog) {
+function formLines(dog, n = 5) {
   if (!dog.runs.length) return '<p class="muted">No form yet.</p>';
-  const rows = dog.runs.slice(0, 5).map((r) => `
+  const rows = dog.runs.slice(0, n).map((r) => `
     <tr>
       <td>${formatShortDate(r.day)}</td><td>${r.distance}</td><td>[${r.trap}]</td><td>${r.sectional.toFixed(2)}</td>
       <td>${r.bends}</td><td class="fin">${ordinal(r.pos)}</td><td>${r.by}</td><td>${r.other}</td>
@@ -277,31 +386,30 @@ function formLines(dog) {
   return `<table class="form"><thead><tr><th>Date</th><th>Dis</th><th>Trp</th><th>Sec</th><th>Bends</th><th>Fin</th><th>By</th><th>Win/2nd</th><th>Remarks</th><th>WnTm</th><th>Gng</th><th>SP</th><th>Grd</th><th>CalTm</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
-function ordinal(n) {
-  return `${n}${['th', 'st', 'nd', 'rd'][n] || 'th'}`;
-}
+const hiddenStats = (dog) => `<div class="hidden-stats">${STAT_KEYS.map(([k, l]) => `${l} ${Math.round(dog.stats[k])}`).join(' · ')}</div>`;
 
 function renderCard() {
   const race = state.view;
   if (!race) return;
   if (isRun(race)) { renderResult(race); return; }
   $('card-title').textContent = `Racecard · Race ${race.no} · ${race.time} · ${race.gradeLabel} ${race.distance}m`;
-  $('card').innerHTML = race.runners.map(({ trap, dog }) => {
+  const { places } = prizes(race.classKey, race.grade);
+  $('card').innerHTML = `<p class="muted">Prizes: 1st £${places[0]}, 2nd £${places[1]}, 3rd £${places[2]}. Every runner gets £25.</p>` + race.runners.map(({ trap, dog }) => {
     const m = race.market.runners.find((x) => x.trap === trap);
     const best = bestTime(dog, race.distance);
-    const stats = STAT_KEYS.map(([k, l]) => `${l} ${dog.stats[k]}`).join(' · ');
     return `
-    <article class="runner">
+    <article class="runner ${isMine(dog) ? 'mine' : ''}">
       <div class="runner-head">
         ${trapBadge(trap)}
         <span class="runner-name">${dog.name} <span class="seed">(${SEED_LETTER[dog.style]})</span></span>
+        ${isMine(dog) ? '<span class="mine-tag">Your dog</span>' : ''}
         <span class="runner-form" title="Last six finishes, oldest first">${formFigures(dog) || '-'}</span>
         <span class="runner-best">Best ${best ? best.toFixed(2) : '-'}</span>
         <button class="odds" data-trap="${trap}" ${race.off ? 'disabled' : ''} title="Back this dog to win">${m.odds}</button>
       </div>
       <div class="runner-sub muted">${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · Trainer ${dog.trainer}</div>
       <div class="pen">${penPicture(dog)}</div>
-      <div class="hidden-stats">${stats}</div>
+      ${hiddenStats(dog)}
       <div class="form-wrap">${formLines(dog)}</div>
     </article>`;
   }).join('');
@@ -322,7 +430,7 @@ function renderResult(race) {
     <table class="card result">
       <thead><tr><th>Pos</th><th>Trap</th><th>Greyhound</th><th>By</th><th>SP</th><th>Time</th><th>Sec</th><th>Bends</th><th>Remarks</th></tr></thead>
       <tbody>${res.map((r) => `
-        <tr><td>${r.position}</td><td>${trapBadge(r.trap)}</td><td>${r.dog.name}</td><td>${r.margin}</td><td>${sp.get(r.trap)}</td>
+        <tr class="${isMine(r.dog) ? 'mine' : ''}"><td>${r.position}</td><td>${trapBadge(r.trap)}</td><td>${r.dog.name}</td><td>${r.margin}</td><td>${sp.get(r.trap)}</td>
         <td>${r.time.toFixed(2)}</td><td>${r.sectional.toFixed(2)}</td><td>${r.bendFigures}</td><td class="remarks">${r.comments}</td></tr>`).join('')}
       </tbody>
     </table>
@@ -359,7 +467,7 @@ function renderSlip() {
       ${b.note ? `<span class="${b.returned > 0 ? 'won' : 'lost'}">${b.returned > 0 ? `+${money(b.returned)}` : 'Lost'}</span>`
         : race.off ? '<span class="muted">Running</span>' : `<button class="link" data-cancel="${i}">Cancel</button>`}</li>`).join('')}</ul>` : '';
 
-  if (race.off || race.result && isRun(race)) {
+  if (race.off || isRun(race)) {
     $('slip-body').innerHTML = `<p class="muted">Betting has closed on this race.</p>${betList || '<p class="muted">You had no bets.</p>'}`;
     return;
   }
@@ -405,8 +513,9 @@ function renderSlip() {
   });
   $('slip-body').querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => {
     const [bet] = race.bets.splice(+b.dataset.cancel, 1);
-    state.world.balance += betCost(bet);
+    addLedger(state.world, `Bet cancelled: race ${race.no}, ${describeBet(bet)}`, betCost(bet));
     updatePurse();
+    save();
     renderAll();
   }));
   $('btn-place').addEventListener('click', () => {
@@ -418,20 +527,194 @@ function renderSlip() {
       Object.assign(bet, { odds: m.odds, decimal: m.decimal });
     }
     (race.bets ||= []).push(bet);
-    state.world.balance -= cost;
+    addLedger(state.world, `Bet: race ${race.no} at ${state.track.name}, ${describeBet(bet)}`, -cost);
     slip.traps = [];
     updatePurse();
+    save();
     renderAll();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Kennel
+
+function stars(n) {
+  const full = Math.floor(n);
+  return `<span class="stars" title="${n} out of 5">${'★'.repeat(full)}${n % 1 ? '½' : ''}<span class="dim">${'★'.repeat(5 - Math.ceil(n))}</span></span>`;
+}
+
+function nextRunDay(dog) {
+  const { world } = state;
+  for (let d = Math.max(world.day, dog.lastRunDay + REST_DAYS); d < world.day + 10; d++) {
+    if (tracksRacingOn(d).some((t) => t.id === world.player.homeTrack)) return d;
+  }
+  return null;
+}
+
+function renderKennel() {
+  const { world } = state;
+  updatePurse();
+  const dogs = myDogs(world);
+  const bills = dogs.reduce((a, d) => a + ECONOMY.upkeepPerDay + (TRAINING[d.training]?.cost || 0), 0);
+  $('kennel-sum').textContent = `${dogs.length} dog${dogs.length === 1 ? '' : 's'} · bills ${money(bills)} a day`;
+  if (!dogs.length) {
+    $('kennel').innerHTML = '<p>Your kennel is empty. Have a look at <b>Buy a dog</b>.</p>';
+    return;
+  }
+  $('kennel').innerHTML = dogs.map((dog) => {
+    const st = trainerStars(world, dog);
+    const nd = nextRunDay(dog);
+    const best = bestTime(dog, trackById(world.player.homeTrack).distances[CLASSES[dog.classKey].distIndex]);
+    const fitClass = dog.fitness >= 80 ? 'won' : dog.fitness >= 60 ? '' : 'lost';
+    const confirming = state.confirm === `sell:${dog.id}`;
+    return `
+    <article class="runner kennel-dog" data-id="${dog.id}">
+      <div class="runner-head">
+        <span class="runner-name">${dog.name} <span class="seed">(${SEED_LETTER[dog.style]})</span></span>
+        <span class="grade-tag">${gradeLabel(dog.classKey, dog.grade)}</span>
+        <span class="runner-form" title="Last six finishes, oldest first">${formFigures(dog) || '-'}</span>
+        <span class="runner-best">Best ${best ? best.toFixed(2) : '-'}</span>
+        <button class="sell ${confirming ? 'primary' : ''}" data-sell="${dog.id}">${confirming ? `Sure? Sell for £${sellPrice(dog)}` : `Sell (£${sellPrice(dog)})`}</button>
+      </div>
+      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · ${dog.runs.length} runs · earned ${money(dog.earnings || 0)}</div>
+      <div class="kennel-grid">
+        <div>
+          <div class="fit">Fitness <span class="fitbar"><span style="width:${dog.fitness}%"></span></span> <span class="${fitClass}">${dog.fitness}</span></div>
+          <label class="check inline"><input type="checkbox" data-enter="${dog.id}" ${dog.entered ? 'checked' : ''}> Enter in races</label>
+          <div class="muted small">${dog.entered ? (nd !== null ? `Next eligible: ${formatDay(nd)}` : 'Resting') : 'Not entered: will not race'}</div>
+          <label>Training <select data-train="${dog.id}">${Object.entries(TRAINING).map(([k, v]) => `<option value="${k}" ${k === dog.training ? 'selected' : ''}>${v.label}${v.cost ? ` (+£${v.cost}/day)` : ''}</option>`).join('')}</select></label>
+          <div class="muted small">${TRAINING[dog.training].help}</div>
+        </div>
+        <div class="trainer-view">
+          <div class="muted">Trainer's view</div>
+          ${Object.entries(STAT_LABELS).map(([k, l]) => `<div class="stat-row"><span>${l}</span>${stars(st[k])}</div>`).join('')}
+        </div>
+      </div>
+      ${hiddenStats(dog)}
+      <details><summary>Form</summary><div class="form-wrap">${formLines(dog, 10)}</div></details>
+    </article>`;
+  }).join('') + `<p class="muted small">Racing takes about ${RACE_FITNESS_COST} fitness. Dogs get it back each day: fastest on Rest, slowest on special training. Below 60 fitness a dog runs slower and training does it less good. Special training improves the abilities it works on, up to each dog's natural limit. The trainer's stars are a judgement, not exact.</p>
+    <label class="check"><input type="checkbox" id="chk-stats-k" ${document.body.classList.contains('show-stats') ? 'checked' : ''}> Show hidden abilities (testing only)</label>`;
+
+  $('kennel').querySelectorAll('[data-enter]').forEach((el) => el.addEventListener('change', () => {
+    dogs.find((d) => d.id === el.dataset.enter).entered = el.checked;
+    save();
+    renderKennel();
+  }));
+  $('kennel').querySelectorAll('[data-train]').forEach((el) => el.addEventListener('change', () => {
+    dogs.find((d) => d.id === el.dataset.train).training = el.value;
+    save();
+    renderKennel();
+  }));
+  $('kennel').querySelectorAll('[data-sell]').forEach((el) => el.addEventListener('click', () => {
+    const key = `sell:${el.dataset.sell}`;
+    if (state.confirm !== key) { state.confirm = key; renderKennel(); return; }
+    state.confirm = null;
+    sellDog(world, dogs.find((d) => d.id === el.dataset.sell));
+    save();
+    renderKennel();
+  }));
+  $('chk-stats-k').addEventListener('change', (e) => { document.body.classList.toggle('show-stats', e.target.checked); $('chk-stats').checked = e.target.checked; });
+}
+
+// ---------------------------------------------------------------------------
+// Sales
+
+function renderSales() {
+  const { world } = state;
+  updatePurse();
+  const sales = salesList(world);
+  save();
+  const nextSale = sales.day + ECONOMY.salesEvery;
+  $('sales-sum').textContent = `New dogs on ${formatDay(nextSale)}`;
+  if (!sales.items.length) { $('sales').innerHTML = '<p>Everything has been sold. More dogs come in next week.</p>'; return; }
+  $('sales').innerHTML = sales.items.map((item, i) => {
+    const { dog } = item;
+    const trials = item.kind === 'youngster'
+      ? `<table class="form"><thead><tr><th>Trial</th><th>Dis</th><th>Trp</th><th>Sec</th><th>Fin</th><th>Time</th><th>Gng</th><th>CalTm</th><th>Remarks</th></tr></thead><tbody>${dog.trials.map((t, k) => `
+          <tr><td>${k + 1}</td><td>${t.distance}</td><td>[${t.trap}]</td><td>${t.sectional.toFixed(2)}</td><td class="fin">${ordinal(t.pos)}</td><td>${t.time.toFixed(2)}</td><td>${t.going > 0 ? '+' : ''}${t.going}</td><td>${t.calcTime.toFixed(2)}</td><td class="remarks">${t.comments}</td></tr>`).join('')}</tbody></table>`
+      : formLines(dog);
+    return `
+    <article class="runner">
+      <div class="runner-head">
+        <span class="runner-name">${dog.name} <span class="seed">(${SEED_LETTER[dog.style]})</span></span>
+        <span class="grade-tag">${item.kind === 'youngster' ? 'Unraced' : gradeLabel(dog.classKey, dog.grade)}</span>
+        ${item.kind === 'raced' ? `<span class="runner-form">${formFigures(dog)}</span>` : ''}
+        <button class="primary buy" data-buy="${i}" ${world.balance < item.price ? 'disabled' : ''}>Buy £${item.price.toLocaleString('en-GB')}</button>
+      </div>
+      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · ${item.kind === 'youngster' ? 'from a breeder, two trials at your track against ordinary dogs' : `from ${dog.trainer}'s kennel`}</div>
+      ${hiddenStats(dog)}
+      <div class="form-wrap">${trials}</div>
+    </article>`;
+  }).join('');
+  $('sales').querySelectorAll('[data-buy]').forEach((b) => b.addEventListener('click', () => {
+    const item = sales.items[+b.dataset.buy];
+    const res = buyDog(world, item);
+    save();
+    renderSales();
+    if (res.ok) $('sales-sum').textContent = `${res.message} See the Kennel.`;
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Calendar, accounts, save & load
+
+function renderCalendar() {
+  const { world } = state;
+  updatePurse();
+  const home = world.player.homeTrack;
+  const dogs = myDogs(world).filter((d) => d.entered);
+  const rows = [];
+  for (let d = world.day; d < world.day + 14; d++) {
+    const tracks = tracksRacingOn(d);
+    const homeRaces = tracks.some((t) => t.id === home);
+    const ready = homeRaces ? dogs.filter((dog) => d - dog.lastRunDay >= REST_DAYS) : [];
+    rows.push(`<tr class="${d === world.day ? 'today' : ''}">
+      <td>${formatDay(d)}${d === world.day ? ' <span class="muted">(today)</span>' : ''}</td>
+      <td>${tracks.map((t) => (t.id === home ? `<b>${t.name}</b>` : t.name)).join(', ')}</td>
+      <td>${homeRaces ? (ready.length ? ready.map((x) => x.name).join(', ') : '<span class="muted">none ready</span>') : ''}</td></tr>`);
+  }
+  $('calendar').innerHTML = `<table class="card"><thead><tr><th>Day</th><th>Meetings</th><th>Your dogs able to run at ${trackById(home).name}</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+    <p class="muted small">A dog needs ${REST_DAYS} days between races. The racing manager puts every entered, rested dog of yours into a race at your track's next meeting.</p>`;
+}
+
+function renderAccounts() {
+  const { world } = state;
+  updatePurse();
+  const week = world.ledger.filter((l) => world.day - l.day < 7);
+  const sum = (list, f) => list.filter(f).reduce((a, l) => a + l.amount, 0);
+  const groups = [
+    ['Prize money and fees', (l) => / ran \d/.test(l.text)],
+    ['Betting', (l) => l.text.startsWith('Bet')],
+    ['Kennel bills', (l) => l.text.startsWith('Kennel bills')],
+    ['Buying and selling dogs', (l) => /^(Bought|Sold) /.test(l.text)],
+  ];
+  $('accounts-sum').textContent = `Purse ${money(world.balance)}`;
+  $('accounts').innerHTML = `
+    <table class="card"><thead><tr><th>Last 7 days</th><th>Amount</th></tr></thead><tbody>
+      ${groups.map(([label, f]) => `<tr><td>${label}</td><td class="${sum(week, f) < 0 ? 'lost' : 'won'}">${money(sum(week, f))}</td></tr>`).join('')}
+    </tbody></table>
+    <h2 class="sub">Every entry</h2>
+    <table class="card"><thead><tr><th>Day</th><th>What</th><th>Amount</th></tr></thead><tbody>
+      ${world.ledger.slice(0, 120).map((l) => `<tr><td>${formatDay(l.day)}</td><td>${l.text}</td><td class="${l.amount < 0 ? 'lost' : 'won'}">${money(l.amount)}</td></tr>`).join('') || '<tr><td colspan="3" class="muted">Nothing yet.</td></tr>'}
+    </tbody></table>`;
+}
+
+function renderGame() {
+  const { world } = state;
+  updatePurse();
+  $('game-info').innerHTML = `<p><b>${world.player.name}</b> · home track ${trackById(world.player.homeTrack).name} · ${formatDay(world.day)} · ${myDogs(world).length} dogs · purse ${money(world.balance)}</p>`;
+  $('btn-new-game').textContent = state.confirm === 'new' ? 'Sure? This deletes your saved game' : 'Start a new game…';
+  $('btn-new-game').classList.toggle('primary', state.confirm === 'new');
 }
 
 // ---------------------------------------------------------------------------
 
 async function boot() {
   const [assets] = await Promise.all([loadAssets(), loadGameData()]);
-  state.world = createWorld(randomSeed());
   state.raceView = new RaceView($('race'), assets);
   state.map = new MiniMap($('map'));
+  state.newTrack = TRACKS[0].id;
 
   $('btn-start').addEventListener('click', startRace);
   $('btn-skip').addEventListener('click', () => {
@@ -449,20 +732,36 @@ async function boot() {
   $('btn-next-race').addEventListener('click', () => goLive(nextRace(state.meeting)));
   $('btn-leave').addEventListener('click', leaveMeeting);
   $('btn-next-day').addEventListener('click', nextDay);
+  document.querySelectorAll('#nav [data-screen]').forEach((b) => b.addEventListener('click', () => go(b.dataset.screen)));
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => {
     state.speed = +b.dataset.speed;
     document.querySelectorAll('.speed button').forEach((o) => o.classList.toggle('on', o === b));
   }));
   $('chk-stats').addEventListener('change', (e) => document.body.classList.toggle('show-stats', e.target.checked));
+  $('btn-new-start').addEventListener('click', startNewGame);
+  $('new-load').addEventListener('change', (e) => loadFromFile(e.target));
+  $('game-load').addEventListener('change', (e) => loadFromFile(e.target));
+  $('btn-export').addEventListener('click', () => exportSave(state.world));
+  $('btn-new-game').addEventListener('click', () => {
+    if (state.confirm !== 'new') { state.confirm = 'new'; renderGame(); return; }
+    state.meeting = null;
+    showNewGame();
+  });
 
-  showLobby('<b>Welcome.</b> You have £1,000 to bet with. Pick a meeting to see its racecards.');
+  const saved = loadGame();
+  if (saved) {
+    state.world = saved;
+    showLobby(`<b>Welcome back to ${saved.player.name}.</b>`);
+  } else {
+    showNewGame();
+  }
   loop();
 }
 
 boot().catch((err) => {
   console.error(err);
   show('screen-lobby');
-  $('lobby-note').classList.remove('hidden');
   const hint = /typing mistake/.test(err.message) ? '' : ' Run the game from a local web server (see README).';
+  $('lobby-note').classList.remove('hidden');
   $('lobby-note').textContent = `Could not start: ${err.message}.${hint}`;
 });

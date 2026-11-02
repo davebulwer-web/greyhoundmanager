@@ -14,17 +14,71 @@
     <span id="today" class="tag">Loading…</span>
     <span class="purse">Purse <b id="balance">£0.00</b></span>
   </header>
+  <nav id="nav" class="nav hidden" aria-label="Game">
+    <button data-screen="screen-lobby">Racing</button>
+    <button data-screen="screen-kennel">Kennel</button>
+    <button data-screen="screen-sales">Buy a dog</button>
+    <button data-screen="screen-calendar">Calendar</button>
+    <button data-screen="screen-accounts">Accounts</button>
+    <button data-screen="screen-game">Save &amp; load</button>
+    <button id="btn-next-day" class="primary nav-next">Next day ▸</button>
+  </nav>
 
   <main>
+    <!-- New game -->
+    <section id="screen-new" class="panel hidden">
+      <h2>Start your kennel</h2>
+      <div class="new-game">
+        <label>Kennel name <input id="new-name" maxlength="28" value="Sandpit Kennels"></label>
+        <div>Home track (your dogs race here)</div>
+        <div id="new-tracks" class="meetings"></div>
+        <p class="muted">You start with £1,500 and one modest greyhound. Buy more from the sales, train them, and bet on any meeting.</p>
+        <div class="slip-line">
+          <button id="btn-new-start" class="primary">Start</button>
+          <label class="file-btn">Load a save file <input type="file" id="new-load" accept=".json,application/json"></label>
+        </div>
+      </div>
+    </section>
+
     <!-- Lobby: pick tonight's meeting -->
     <section id="screen-lobby" class="panel hidden">
-      <div class="panel-head">
-        <h2>Tonight's racing</h2>
-        <button id="btn-next-day">Skip to tomorrow</button>
-      </div>
+      <div class="panel-head"><h2>Tonight's racing</h2></div>
       <div id="lobby-note" class="lobby-note hidden"></div>
+      <div id="lobby-runners"></div>
       <div id="lobby-meetings" class="meetings"></div>
-      <p class="muted small">Each track races every other night. Study the form on the racecard, bet with your purse, then watch the races. Form, grades and prices carry on from meeting to meeting.</p>
+      <p class="muted small">Each track races every other night. Your dogs race at your home track whenever they're entered and have had five days' rest. Press <b>Next day</b> when you're done for the night: training, fitness and kennel bills are worked out overnight.</p>
+    </section>
+
+    <section id="screen-kennel" class="panel hidden">
+      <div class="panel-head"><h2>Your kennel</h2><span id="kennel-sum" class="muted"></span></div>
+      <div id="kennel"></div>
+    </section>
+
+    <section id="screen-sales" class="panel hidden">
+      <div class="panel-head"><h2>Dogs for sale</h2><span id="sales-sum" class="muted"></span></div>
+      <div id="sales"></div>
+    </section>
+
+    <section id="screen-calendar" class="panel hidden">
+      <div class="panel-head"><h2>Calendar</h2></div>
+      <div id="calendar"></div>
+    </section>
+
+    <section id="screen-accounts" class="panel hidden">
+      <div class="panel-head"><h2>Accounts</h2><span id="accounts-sum" class="muted"></span></div>
+      <div id="accounts"></div>
+    </section>
+
+    <section id="screen-game" class="panel hidden">
+      <div class="panel-head"><h2>Save &amp; load</h2></div>
+      <div id="game-info"></div>
+      <p class="muted">The game saves itself in this browser after every race and every day. Download a save file as a backup, or to carry on on another computer.</p>
+      <div class="slip-line">
+        <button id="btn-export">Download save file</button>
+        <label class="file-btn">Load a save file <input type="file" id="game-load" accept=".json,application/json"></label>
+        <button id="btn-new-game">Start a new game…</button>
+      </div>
+      <p id="game-msg" class="muted"></p>
     </section>
 
     <div id="loading" class="panel loading hidden">Catching up on the form…</div>

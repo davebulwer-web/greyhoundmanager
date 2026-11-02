@@ -2,21 +2,55 @@
   "_readme": "Lists every image the game loads. Replace any PNG in assets/sprites with your own art of the SAME size and layout, or change the numbers here to match your new art. See ART_GUIDE.md.",
   "sprites": {
     "greyhound": {
+      "file": "sprites/greyhound_trap_run.png",
+      "frameWidth": 64,
+      "frameHeight": 45,
+      "frames": 12,
+      "rowsBy": "trap",
+      "rows": [
+        "trap1",
+        "trap2",
+        "trap3",
+        "trap4",
+        "trap5",
+        "trap6"
+      ],
+      "anchorX": 34,
+      "anchorY": 41,
+      "metresPerCycle": 9,
+      "notes": "Dave's sheet, converted by tools/import_greyhound_sheet.py from assets/source/greyhound_sheet_designer.png. One row per trap with the jacket painted on, 12-frame gallop. To go back to the placeholder art, swap this entry for 'greyhoundPlaceholder' below and rename it 'greyhound'."
+    },
+    "greyhoundPlaceholder": {
       "file": "sprites/greyhound_run.png",
       "frameWidth": 48,
       "frameHeight": 24,
       "frames": 8,
-      "rows": ["black", "blue", "fawn", "brindle", "white-black"],
+      "rows": [
+        "black",
+        "blue",
+        "fawn",
+        "brindle",
+        "white-black"
+      ],
       "anchorX": 24,
       "anchorY": 23,
-      "notes": "One row per coat colour, 8-frame gallop cycle left to right, dog running to the right. anchor = the point placed on the dog's position (centre of body, at paw level)."
+      "notes": "One row per coat colour, 8-frame gallop cycle left to right, dog running to the right. anchor = the point placed on the dog's position (centre of body, at paw level).",
+      "rowsBy": "coat",
+      "unused": true
     },
     "jacket": {
       "file": "sprites/jackets_run.png",
       "frameWidth": 48,
       "frameHeight": 24,
       "frames": 8,
-      "rows": ["trap1", "trap2", "trap3", "trap4", "trap5", "trap6"],
+      "rows": [
+        "trap1",
+        "trap2",
+        "trap3",
+        "trap4",
+        "trap5",
+        "trap6"
+      ],
       "anchorX": 24,
       "anchorY": 23,
       "notes": "Racing jackets drawn on their own, on a transparent background, lined up exactly over the matching greyhound frame."
@@ -36,18 +70,58 @@
       "frames": 2,
       "notes": "Frame 0 closed, frame 1 open. Trap 1 at the bottom (nearest the rail), trap 6 at the top."
     },
-    "finishPost": { "file": "sprites/finish_post.png" }
+    "finishPost": {
+      "file": "sprites/finish_post.png"
+    }
   },
   "background": {
     "_notes": "Layers drawn back to front. 'y' is the top edge on the 640x240 race screen. 'scroll' is how fast it moves with the camera (1 = with the track, 0 = fixed). 'repeat' tiles the image sideways.",
     "layers": [
-      { "file": "sprites/sky.png", "y": 0, "scroll": 0, "repeat": false },
-      { "file": "sprites/stand.png", "y": 26, "scroll": 0.45, "repeat": true },
-      { "file": "sprites/hoardings.png", "y": 88, "scroll": 1, "repeat": true },
-      { "file": "sprites/rail_far.png", "y": 104, "scroll": 1, "repeat": true },
-      { "file": "sprites/sand.png", "y": 116, "height": 106, "scroll": 1, "repeat": true },
-      { "file": "sprites/rail_near.png", "y": 220, "scroll": 1, "repeat": true, "front": true },
-      { "file": "sprites/grass.png", "y": 236, "scroll": 1, "repeat": true, "front": true }
+      {
+        "file": "sprites/sky.png",
+        "y": 0,
+        "scroll": 0,
+        "repeat": false
+      },
+      {
+        "file": "sprites/stand.png",
+        "y": 26,
+        "scroll": 0.45,
+        "repeat": true
+      },
+      {
+        "file": "sprites/hoardings.png",
+        "y": 88,
+        "scroll": 1,
+        "repeat": true
+      },
+      {
+        "file": "sprites/rail_far.png",
+        "y": 104,
+        "scroll": 1,
+        "repeat": true
+      },
+      {
+        "file": "sprites/sand.png",
+        "y": 116,
+        "height": 106,
+        "scroll": 1,
+        "repeat": true
+      },
+      {
+        "file": "sprites/rail_near.png",
+        "y": 220,
+        "scroll": 1,
+        "repeat": true,
+        "front": true
+      },
+      {
+        "file": "sprites/grass.png",
+        "y": 236,
+        "scroll": 1,
+        "repeat": true,
+        "front": true
+      }
     ]
   },
   "raceView": {

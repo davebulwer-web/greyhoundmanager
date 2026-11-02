@@ -34,7 +34,25 @@ The race screen is **640 x 240 pixels**. One metre of track is 16 pixels.
 | `rail_near.png` | 32 x 18 | Inside rail with the hare rail. Drawn in front of the dogs. |
 | `grass.png` | 32 x 8 | Strip of grass at the bottom. Drawn in front. |
 
-## Greyhound frames
+## Greyhounds with the jacket painted on
+
+The game currently uses **`greyhound_trap_run.png`** (768 x 270): 12 frames of
+64 x 45 across, one row per trap 1 to 6, with each dog already wearing its jacket.
+It was made from Dave's sheet in `assets/source/` by:
+
+    python3 tools/import_greyhound_sheet.py assets/source/greyhound_sheet_designer.png
+
+That script cuts each dog out of the black background, lines every frame up on
+the jacket so the body stays steady, shrinks it and adds an outline. Use it again
+for a new sheet laid out the same way (6 rows, 12 dogs per row, black background).
+
+In `assets/manifest.json`, `"rowsBy": "trap"` tells the game the jackets are
+painted on, and `metresPerCycle` is how far a dog runs during one loop of the
+frames (raise it if the legs look too fast). The older placeholder sheet with
+separate jackets (`greyhound_run.png` + `jackets_run.png`, one row per coat
+colour) still works: point the `greyhound` entry back at it with `"rowsBy": "coat"`.
+
+## Greyhound frames (placeholder sheet)
 
 The 8 frames are one full stride of a gallop, played in a loop, left to right:
 

@@ -119,16 +119,24 @@ export class RaceView {
     const j = this.assets.sprites.jacket;
     for (const s of order) {
       const runner = race.runners[s.i];
-      this.anim[s.i] = (this.anim[s.i] + (s.v / 4.6) * g.frames * simStep) % g.frames;
+      this.anim[s.i] = (this.anim[s.i] + (s.v / (g.metresPerCycle || 4.6)) * g.frames * simStep) % g.frames;
       const frame = s.v < 0.3 ? 0 : Math.floor(this.anim[s.i]);
       const x = this.screenX(s.d) - g.anchorX;
       const y = Math.round(this.laneY(s.lane)) - g.anchorY;
       if (x < -g.frameWidth || x > view.width) continue;
       ctx.fillStyle = 'rgba(60,36,16,0.35)';
-      ctx.fillRect(x + 12, y + g.anchorY - 1, 24, 2);
-      const coatRow = Math.max(0, g.rows.indexOf(runner.dog.coat));
-      ctx.drawImage(g.image, frame * g.frameWidth, coatRow * g.frameHeight, g.frameWidth, g.frameHeight, x, y, g.frameWidth, g.frameHeight);
-      ctx.drawImage(j.image, frame * j.frameWidth, (runner.trap - 1) * j.frameHeight, j.frameWidth, j.frameHeight, x, y, j.frameWidth, j.frameHeight);
+      const shadowW = Math.round(g.frameWidth * 0.5);
+      ctx.fillRect(x + g.anchorX - Math.round(shadowW / 2), y + g.anchorY - 1, shadowW, 2);
+      // Sheets either have one row per coat (jacket drawn on top from a
+      // separate sheet) or one row per trap with the jacket already painted on.
+      const row = g.rowsBy === 'trap'
+        ? runner.trap - 1
+        : Math.max(0, g.rows.indexOf(runner.dog.coat));
+      ctx.drawImage(g.image, frame * g.frameWidth, row * g.frameHeight, g.frameWidth, g.frameHeight, x, y, g.frameWidth, g.frameHeight);
+      if (j && g.rowsBy !== 'trap') {
+        const jf = frame % j.frames;
+        ctx.drawImage(j.image, jf * j.frameWidth, (runner.trap - 1) * j.frameHeight, j.frameWidth, j.frameHeight, x, y, j.frameWidth, j.frameHeight);
+      }
     }
 
     if (!trapsOpen) drawTraps();

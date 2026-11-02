@@ -67,7 +67,7 @@ function newRace(view, map) {
       <td>${dog.name}</td>
       <td>${dog.age} (${dog.sex})</td>
       <td>${dog.weight}</td>
-      <td>${dog.coat.replace('-', ' & ')}</td>
+      <td>${({ 'white-black': 'white & black', 'red-fawn': 'red fawn' })[dog.coat] || dog.coat}</td>
       <td>${STYLES[dog.style].label}</td>
       ${['breakSpeed', 'earlyPace', 'topSpeed', 'stamina', 'cornering', 'consistency'].map((k) => `<td class="stat">${dog.stats[k]}</td>`).join('')}
     </tr>`).join('');

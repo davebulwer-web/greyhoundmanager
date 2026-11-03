@@ -41,6 +41,17 @@ export const TRAINING = {
 export const RACE_FITNESS_COST = 18;
 const GAIN_PER_DAY = 0.16;     // ability points a day on special training, when well short of potential
 const NORMAL_GAIN = 0.03;
+/**
+ * Late developers. Young dogs (3 and under) with a lot of hidden room grow into
+ * it by themselves, whatever their training: each day they gain `matureRate`
+ * of the room above `matureFrom` points.
+ */
+export const DEVELOPERS = {
+  improverChance: 0.10, improverRoom: [8, 16],  // 1 young dog in 10 has this much extra room
+  starChance: 0.03, starRoom: [26, 40],         // about 1 in 33 is a hidden star
+  matureFrom: 6,
+  matureRate: 0.02,
+};
 
 export const STAT_LABELS = {
   breakSpeed: 'Break', earlyPace: 'Early pace', topSpeed: 'Top speed', stamina: 'Stamina', cornering: 'Bends', consistency: 'Consistency', jumping: 'Jumping',
@@ -67,8 +78,15 @@ export function takeOn(world, dog) {
   dog.fitness ??= 100;
   dog.boughtDay = world.day;
   // Hidden ceiling for each ability: how far training can take this dog.
+  // Most dogs have a little room to improve. A few young ones are late developers, and a
+  // rare one is a hidden star: nothing in its trials or stars gives it away at the start.
+  const bloom = dog.age > 3 ? 0 : rng.chance(DEVELOPERS.starChance) ? rng.int(...DEVELOPERS.starRoom)
+    : rng.chance(DEVELOPERS.improverChance) ? rng.int(...DEVELOPERS.improverRoom) : 0;
   dog.potential = {};
-  for (const k of Object.keys(dog.stats)) dog.potential[k] = Math.min(99, dog.stats[k] + rng.int(2, 16));
+  for (const k of Object.keys(dog.stats)) {
+    const extra = bloom ? Math.max(0, bloom + rng.int(-4, 4)) : 0;
+    dog.potential[k] = Math.min(99, dog.stats[k] + rng.int(2, 16) + extra);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -247,7 +265,8 @@ export function advanceDay(world) {
       const room = (dog.potential?.[k] ?? dog.stats[k]) - dog.stats[k];
       if (room <= 0) continue;
       const rate = plan.stats.includes(k) ? GAIN_PER_DAY : dog.training === 'normal' ? NORMAL_GAIN : 0;
-      dog.stats[k] = +(dog.stats[k] + rate * keen * Math.min(1, room / 5)).toFixed(3);
+      const maturing = dog.age <= 3 ? DEVELOPERS.matureRate * Math.max(0, room - DEVELOPERS.matureFrom) : 0;
+      dog.stats[k] = +(dog.stats[k] + (rate * Math.min(1, room / 5) + maturing) * keen).toFixed(3);
     }
     bills += ECONOMY.upkeepPerDay + plan.cost;
   }

@@ -28,6 +28,8 @@ export const CLASSES = {
 export const CLASS_KEYS = Object.keys(CLASSES);
 // A night's card, in order. Kinds a track doesn't stage become standard races.
 const MEETING_PLAN = ['standard', 'standard', 'sprint', 'standard', 'middle', 'standard', 'hurdle', 'standard', 'stay', 'standard', 'marathon'];
+const MAX_GRADE_GAP = 2;     // dogs in a graded race are at most this many grades from it
+const EASY_WIN = 6;           // winning by this many lengths or more goes up two grades
 export const REST_DAYS = 5;     // a dog needs this many days between races
 export const HISTORY_DAYS = 36; // the game starts on this day of the calendar
 export const CATCHUP_DAYS = 56; // a track's form is built from this many days of racing before you first visit
@@ -306,8 +308,10 @@ export function getMeeting(world, trackId, day = world.day) {
       const mine = ready.find((d) => isMine(d) && rested(d, REST_DAYS));
       const grade = mine ? mine.grade : counts.indexOf(Math.max(...counts));
       // Fill from that grade first, then the grades either side.
-      const byCloseness = [...ready].sort((a, b) =>
+      // (never more than MAX_GRADE_GAP grades away, so a race is a fair test of its grade).
+      const byCloseness = ready.filter((d) => Math.abs(d.grade - grade) <= MAX_GRADE_GAP).sort((a, b) =>
         Math.abs(a.grade - grade) - Math.abs(b.grade - grade) || (isMine(b) - isMine(a)) || (a.lastRunDay - b.lastRunDay) || rng.next() - 0.5);
+      if (byCloseness.length < 6) continue;
       field = { grade, dogs: byCloseness.slice(0, 6) };
       break;
     }
@@ -489,12 +493,13 @@ function recentFigure(dog) {
   return runs.length ? runs.reduce((a, r) => a + r.fig, 0) / runs.length : -9;
 }
 
-/** Winners go up a grade; dogs beaten into 4th or worse twice running (once 5th or 6th) go down. */
+/** Winners go up a grade (two for an easy win); dogs beaten into 4th or worse twice running (once 5th or 6th) go down. */
 function regrade(results, classKey) {
   const maxGrade = CLASSES[classKey].grades - 1;
   for (const r of results) {
     const dog = r.dog;
-    if (r.position === 1 && dog.grade > 0) { dog.grade--; continue; }
+    // An easy winner is put up two grades, as a racing manager would.
+    if (r.position === 1 && dog.grade > 0) { dog.grade = Math.max(0, dog.grade - (results[1]?.behindLengths >= EASY_WIN ? 2 : 1)); continue; }
     const last = dog.runs.slice(0, 2).map((x) => x.pos);
     if (dog.grade < maxGrade && last.length === 2 && last.every((p) => p >= 4) && Math.max(...last) >= 5) dog.grade++;
   }

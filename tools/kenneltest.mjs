@@ -33,6 +33,7 @@ for (let i = 0; i < days; i++) {
 console.log(`${days} days in ${Date.now() - t0}ms. Balance £${world.balance.toFixed(2)}`);
 for (const { d: before, stats } of start) {
   const d = myDogs(world).find((x) => x.id === before.id);
+  if (!d) { console.log(`  ${before.name} has left the racing kennel (retired or sold)`); continue; }
   const gains = Object.keys(stats).map((k) => `${k} ${(d.stats[k] - stats[k]).toFixed(1)}`).join(', ');
   console.log(`  ${d.name} (${d.training}): ${d.runs.length} runs, now ${d.classKey} grade ${d.grade + 1}, fitness ${d.fitness}, earned £${d.earnings || 0}. Gains: ${gains}`);
 }

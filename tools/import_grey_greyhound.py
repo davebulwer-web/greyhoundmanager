@@ -6,6 +6,13 @@ Builds the recolourable greyhound art from ONE plain grey greyhound sheet
 
 Pass the number of frames if the dogs in the sheet touch each other.
 
+For the jump over a hurdle:
+
+    python3 tools/import_grey_greyhound.py assets/source/greyhound_jump_designer.png 8 --jump --pick 3,4,5
+
+--jump writes greyhound_coats_jump.png / jackets_coats_jump.png instead, and
+--pick keeps only those frames (counting from 1), in that order.
+
 It writes two sheets that line up frame for frame:
 
   assets/sprites/greyhound_coats_run.png   one row per coat colour (tinted from the grey dog)
@@ -129,6 +136,18 @@ def find_frames(mask, expected=None):
 
 
 def main():
+    global OUT_DOGS, OUT_JACKETS
+    args = [a for a in sys.argv[1:]]
+    pick = None
+    if "--pick" in args:
+        i = args.index("--pick")
+        pick = [int(v) - 1 for v in args[i + 1].split(",")]
+        del args[i:i + 2]
+    if "--jump" in args:
+        args.remove("--jump")
+        OUT_DOGS = OUT_DOGS.replace("_run.png", "_jump.png")
+        OUT_JACKETS = OUT_JACKETS.replace("_run.png", "_jump.png")
+    sys.argv[1:] = args
     src = np.array(Image.open(sys.argv[1]).convert("RGB")).astype(int)
     r, g, b = src[..., 0], src[..., 1], src[..., 2]
     background = (r - g > 60) & (b - g > 60)
@@ -138,14 +157,20 @@ def main():
     expected = int(sys.argv[2]) if len(sys.argv) > 2 else None
     frames = find_frames(fg, expected)
     print("frames found:", len(frames), frames)
+    if pick:
+        frames = [frames[i] for i in pick]
 
     cuts = []
     for x0, x1 in frames:
         ys = np.nonzero(fg[:, x0:x1].any(axis=1))[0]
         y0, y1 = ys.min(), ys.max() + 1
         m = largest_component(fg[y0:y1, x0:x1])
+        # trim to the dog itself (the frame strip can hold bits of its neighbours)
+        mys, mxs = np.nonzero(m)
+        m = m[mys.min():mys.max() + 1, mxs.min():mxs.max() + 1]
+        rgb = src[y0 + mys.min():y0 + mys.max() + 1, x0 + mxs.min():x0 + mxs.max() + 1]
         tx0, tx1, back = torso(m)
-        cuts.append((src[y0:y1, x0:x1], m, (tx0 + tx1) / 2, back, tx1 - tx0))
+        cuts.append((rgb, m, (tx0 + tx1) / 2, back, tx1 - tx0))
 
     body_len = np.median([c[4] for c in cuts])
     scale = TARGET_BODY / body_len

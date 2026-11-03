@@ -1,7 +1,7 @@
 # Notes for Claude
 
 - Owner (Dave) does not program; explain changes in plain English and keep the game runnable with no build step (plain ES modules, served by any static server).
-- This is an original game. Do not copy names, screens, text or data from Greyhound Manager 2 or real tracks; it is inspiration only.
+- This is an original game. Do not copy names, screens, text or data from Greyhound Manager 2; it is inspiration only. Tracks are the real licensed British tracks, named only by place (no logos, sponsors or stadium branding); competitions use the real race names without sponsors.
 - Art must stay swappable: every image is listed in `assets/manifest.json` and documented in `ART_GUIDE.md`. Update both when adding art. Never hard-code sprite sizes in code.
 - `src/sim.js` must stay free of DOM code so it runs in Node. After changing it, run `node tools/simtest.mjs 600` and check trap win rates (roughly 13-24% each), winning times (~27-28.5s for 450-460m; hurdle races, marked H, about 0.3-0.5s slower than flat over the same trip) and comment counts look sensible.
 - Check visual changes with Playwright screenshots (`python3 -m http.server` then load the page).

@@ -9,7 +9,7 @@ import { serialize, deserialize } from '../src/save.js';
 await loadGameData();
 const days = +(process.argv[2] || 90);
 let t0 = Date.now();
-let world = createWorld(777, { name: 'Test Kennel', homeTrack: 'kestrel' });
+let world = createWorld(777, { name: 'Test Kennel', homeTrack: 'hove' });
 const starter = giveStarterDog(world);
 console.log(`New world + starter dog (${starter.name}, A${starter.grade + 1}) in ${Date.now() - t0}ms`);
 const sale = salesList(world);

@@ -218,7 +218,7 @@
       }
     ],
     "stands": {
-      "_notes": "Made from Dave's sheet (assets/source/stands_sheet_designer.png) by tools/import_background.py. Any size works: each stand is drawn with its bottom edge on the stand layer's 'bottom'. Keep them under about 88 pixels tall so they fit under the top of the screen.",
+      "_notes": "Made from Dave's sheet (assets/source/stands_sheet_designer.png) by tools/import_background.py. Any size works: each stand is drawn with its bottom edge on the stand layer's 'bottom'. Keep them under about 88 pixels tall so they fit under the top of the screen. The track_stands/ pictures (one per track, each with the track's name board, plus a sponsor strip) are drawn by tools/make_track_stands.py; see ART_GUIDE.md.",
       "standard_a": {
         "file": "sprites/stand_standard_a.png"
       },
@@ -239,6 +239,60 @@
       },
       "tournament": {
         "file": "sprites/stand_tournament.png"
+      },
+      "rail_centralpark": {
+        "file": "sprites/track_stands/rail_centralpark.png"
+      },
+      "rail_harlow": {
+        "file": "sprites/track_stands/rail_harlow.png"
+      },
+      "picket_kinsley": {
+        "file": "sprites/track_stands/picket_kinsley.png"
+      },
+      "picket_starpelaw": {
+        "file": "sprites/track_stands/picket_starpelaw.png"
+      },
+      "sponsors_romford": {
+        "file": "sprites/track_stands/sponsors_romford.png"
+      },
+      "clubhouse_hove": {
+        "file": "sprites/track_stands/clubhouse_hove.png"
+      },
+      "clubhouse_nottingham": {
+        "file": "sprites/track_stands/clubhouse_nottingham.png"
+      },
+      "covered_doncaster": {
+        "file": "sprites/track_stands/covered_doncaster.png"
+      },
+      "covered_sunderland": {
+        "file": "sprites/track_stands/covered_sunderland.png"
+      },
+      "steel_newcastle": {
+        "file": "sprites/track_stands/steel_newcastle.png"
+      },
+      "steel_sheffield": {
+        "file": "sprites/track_stands/steel_sheffield.png"
+      },
+      "bleachers_oxford": {
+        "file": "sprites/track_stands/bleachers_oxford.png"
+      },
+      "bleachers_yarmouth": {
+        "file": "sprites/track_stands/bleachers_yarmouth.png"
+      },
+      "garden_towcester": {
+        "file": "sprites/track_stands/garden_towcester.png"
+      },
+      "garden_monmore": {
+        "file": "sprites/track_stands/garden_monmore.png"
+      },
+      "garden_dunstallpark": {
+        "file": "sprites/track_stands/garden_dunstallpark.png"
+      },
+      "garden_valley": {
+        "file": "sprites/track_stands/garden_valley.png"
+      },
+      "sponsors": {
+        "file": "sprites/track_stands/sponsors.png"
       }
     },
     "cupStand": "tournament"

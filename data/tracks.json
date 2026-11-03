@@ -1,12 +1,12 @@
 {
-  "_readme": "The tracks: the licensed greyhound tracks racing in Britain in 2026, by place name. Distances and race days come from public sources; circumferences are real where known and estimated otherwise. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. place = where it is. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = the race distances this track stages, in metres, by kind of race: sprint (D grades), standard (A grades), middle (B grades, a second standard trip), stay (S grades), marathon (M grades) and hurdle (H grades, over hurdles). Leave a kind out and the track doesn't stage those races. Every track needs a standard distance. nights = the days of the week the track races (Mon Tue Wed Thu Fri Sat Sun). goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). stands = the grandstands along the home straight, in order, repeated along the track (names from \"stands\" in assets/manifest.json: standard_a, standard_b, heritage, premium, terrace, pavilion, tournament). On competition nights the tournament stand is added too. Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
+  "_readme": "The tracks: the licensed greyhound tracks racing in Britain in 2026, by place name. Distances and race days come from public sources; circumferences are real where known and estimated otherwise. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. place = where it is. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = the race distances this track stages, in metres, by kind of race: sprint (D grades), standard (A grades), middle (B grades, a second standard trip), stay (S grades), marathon (M grades) and hurdle (H grades, over hurdles). Leave a kind out and the track doesn't stage those races. Every track needs a standard distance. nights = the days of the week the track races (Mon Tue Wed Thu Fri Sat Sun). goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). stands = the grandstands along the home straight, in order, repeated along the track (names from \"stands\" in assets/manifest.json: standard_a, standard_b, heritage, premium, terrace, pavilion, tournament, sponsors, and each track's own section with its name board, such as rail_centralpark). On competition nights the tournament stand is added too. Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
   "tracks": [
     {
       "id": "centralpark", "name": "Central Park", "place": "Sittingbourne, Kent",
       "straight": 89, "radius": 36.0, "finishBeforeBend": 12, "goingBase": 0,
       "distances": {"sprint": 277, "standard": 491, "stay": 664, "marathon": 946},
       "nights": ["Mon", "Tue", "Thu", "Fri", "Sat"],
-      "stands": ["standard_b", "terrace"],
+      "stands": ["rail_centralpark", "standard_b", "terrace"],
       "description": "Relaid in 2023 with new distances; a fair, galloping circuit."
     },
     {
@@ -14,7 +14,7 @@
       "straight": 95, "radius": 38.2, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 275, "standard": 450, "middle": 483, "stay": 661, "marathon": 868},
       "nights": ["Mon", "Wed", "Sat", "Sun"],
-      "stands": ["standard_a"],
+      "stands": ["covered_doncaster", "standard_a"],
       "description": "A big track near Doncaster with two standard trips."
     },
     {
@@ -22,7 +22,7 @@
       "straight": 101, "radius": 34.7, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 270, "standard": 480, "stay": 660, "marathon": 925},
       "nights": ["Mon", "Wed", "Thu", "Fri"],
-      "stands": ["pavilion", "premium"],
+      "stands": ["garden_dunstallpark", "pavilion", "premium"],
       "description": "The newest track, opened in 2025 inside Wolverhampton Racecourse. Wide and galloping."
     },
     {
@@ -30,7 +30,7 @@
       "straight": 78, "radius": 37.6, "finishBeforeBend": 12, "goingBase": 0,
       "distances": {"sprint": 238, "standard": 415, "stay": 592, "marathon": 769, "hurdle": 415},
       "nights": ["Mon", "Wed", "Fri", "Sun"],
-      "stands": ["terrace"],
+      "stands": ["rail_harlow", "terrace"],
       "description": "A compact Essex track that stages hurdles over its standard trip."
     },
     {
@@ -38,7 +38,7 @@
       "straight": 103, "radius": 38.7, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 285, "standard": 500, "middle": 515, "stay": 695, "marathon": 945, "hurdle": 500},
       "nights": ["Wed", "Thu", "Fri", "Sat", "Sun"],
-      "stands": ["premium", "heritage"],
+      "stands": ["clubhouse_hove", "premium", "heritage"],
       "description": "A fair, galloping track with banked bends; dogs coming from behind do well."
     },
     {
@@ -46,7 +46,7 @@
       "straight": 77, "radius": 36.8, "finishBeforeBend": 12, "goingBase": 5,
       "distances": {"sprint": 268, "standard": 462, "stay": 650, "marathon": 844},
       "nights": ["Mon", "Wed", "Fri", "Sun"],
-      "stands": ["heritage"],
+      "stands": ["picket_kinsley", "heritage"],
       "description": "A small Yorkshire track that began life as a flapping track in 1939."
     },
     {
@@ -54,7 +54,7 @@
       "straight": 88, "radius": 38.8, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 264, "standard": 480, "stay": 630, "marathon": 835},
       "nights": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-      "stands": ["standard_a", "standard_b"],
+      "stands": ["garden_monmore", "standard_a", "standard_b", "sponsors"],
       "description": "Busy Midlands track with well-banked bends and a true surface."
     },
     {
@@ -62,7 +62,7 @@
       "straight": 91, "radius": 37.1, "finishBeforeBend": 12, "goingBase": -5,
       "distances": {"sprint": 290, "standard": 480, "stay": 640, "marathon": 825},
       "nights": ["Tue", "Wed", "Thu", "Sat"],
-      "stands": ["standard_b"],
+      "stands": ["steel_newcastle", "standard_b"],
       "description": "A fast surface that produces quick times."
     },
     {
@@ -70,7 +70,7 @@
       "straight": 105, "radius": 36.1, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 305, "standard": 480, "middle": 500, "stay": 680, "marathon": 905},
       "nights": ["Mon", "Wed", "Thu", "Fri"],
-      "stands": ["pavilion"],
+      "stands": ["clubhouse_nottingham", "pavilion"],
       "description": "A big galloping track with long straights and wide, sweeping bends."
     },
     {
@@ -78,7 +78,7 @@
       "straight": 83, "radius": 36.4, "finishBeforeBend": 12, "goingBase": 0,
       "distances": {"sprint": 253, "standard": 450, "stay": 650, "marathon": 847},
       "nights": ["Mon", "Fri", "Sat"],
-      "stands": ["heritage", "terrace"],
+      "stands": ["bleachers_oxford", "heritage", "terrace"],
       "description": "Sandy Lane, back racing since 2022; the back straight runs beside the railway."
     },
     {
@@ -86,7 +86,7 @@
       "straight": 66, "radius": 34.7, "finishBeforeBend": 10, "goingBase": 0,
       "distances": {"sprint": 225, "standard": 400, "stay": 575, "marathon": 750, "hurdle": 400},
       "nights": ["Mon", "Wed", "Thu", "Fri", "Sat"],
-      "stands": ["standard_a", "terrace"],
+      "stands": ["sponsors_romford", "standard_a", "terrace"],
       "description": "Small and tight with sharp bends: early pace and an inside draw are a big help."
     },
     {
@@ -94,7 +94,7 @@
       "straight": 95, "radius": 38.5, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 280, "standard": 480, "middle": 500, "stay": 660, "marathon": 915, "hurdle": 500},
       "nights": ["Tue", "Thu", "Fri", "Sat", "Sun"],
-      "stands": ["heritage", "standard_b"],
+      "stands": ["steel_sheffield", "heritage", "standard_b", "sponsors"],
       "description": "Owlerton: an all-sand oval shared with speedway, with hurdles over 500m."
     },
     {
@@ -102,7 +102,7 @@
       "straight": 59, "radius": 33.6, "finishBeforeBend": 10, "goingBase": 5,
       "distances": {"sprint": 245, "standard": 435, "stay": 590, "marathon": 780, "hurdle": 435},
       "nights": ["Tue", "Thu", "Sun"],
-      "stands": ["terrace"],
+      "stands": ["picket_starpelaw", "terrace"],
       "description": "The smallest track of all, formerly Pelaw Grange. Hurdle racing returned in 2026."
     },
     {
@@ -110,7 +110,7 @@
       "straight": 79, "radius": 35.0, "finishBeforeBend": 11, "goingBase": 0,
       "distances": {"sprint": 261, "standard": 450, "stay": 640, "marathon": 828},
       "nights": ["Tue", "Wed", "Thu", "Fri", "Sun"],
-      "stands": ["standard_a"],
+      "stands": ["covered_sunderland", "standard_a"],
       "description": "A steady, workmanlike track with a well-kept surface."
     },
     {
@@ -118,7 +118,7 @@
       "straight": 101, "radius": 34.7, "finishBeforeBend": 13, "goingBase": 0,
       "distances": {"sprint": 270, "standard": 500, "stay": 712, "marathon": 942},
       "nights": ["Thu", "Sat", "Sun"],
-      "stands": ["premium", "pavilion"],
+      "stands": ["garden_towcester", "premium", "pavilion"],
       "description": "Home of the Derby: very wide bends and long straights inside the racecourse."
     },
     {
@@ -126,7 +126,7 @@
       "straight": 75, "radius": 35.8, "finishBeforeBend": 11, "goingBase": 5,
       "distances": {"sprint": 260, "standard": 460, "stay": 645},
       "nights": ["Tue", "Wed", "Thu", "Sun"],
-      "stands": ["terrace", "heritage"],
+      "stands": ["garden_valley", "terrace", "heritage"],
       "description": "The only track in Wales, beside the Rhymney River."
     },
     {
@@ -134,7 +134,7 @@
       "straight": 92, "radius": 36.9, "finishBeforeBend": 12, "goingBase": 5,
       "distances": {"sprint": 277, "standard": 462, "stay": 659, "marathon": 843},
       "nights": ["Mon", "Wed", "Thu", "Sun"],
-      "stands": ["standard_b", "heritage"],
+      "stands": ["bleachers_yarmouth", "standard_b", "heritage"],
       "description": "East Anglia's track, home of the East Anglian Derby; the sea air can slow the times."
     }
   ]

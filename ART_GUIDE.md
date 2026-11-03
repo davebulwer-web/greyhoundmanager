@@ -124,10 +124,41 @@ so big stands still look big (none taller than 84 pixels).
 Each track picks its stands with `"stands"` in `data/tracks.json`, for example
 `"stands": ["pavilion", "premium"]`. They are drawn side by side in that order,
 bottoms lined up, and repeat along the straight. On competition nights the stand
-named by `cupStand` in the manifest goes first. Stands can be any width and
+named by `cupStand` in the manifest goes second (after the track's own section). Stands can be any width and
 height: to add one, put the PNG in `assets/sprites`, add a line under
 `"stands"` in the manifest, and use its name in `tracks.json`. A track with no
 `"stands"` uses `stand_designer.png`.
+
+## Each track's own section, with its name board
+
+Every track also has a section of its own with the track's name on a sign, drawn
+in pixel art by `tools/make_track_stands.py` (run `python3 tools/make_track_stands.py`
+to redraw them). They're in `assets/sprites/track_stands/` and listed under
+`"stands"` in the manifest. Each one has a see-through sky, the white rail along
+the bottom and plain ends so copies join up. Heights are 50 to 84 pixels.
+
+| Section | Files | Tracks |
+|---------|-------|--------|
+| Rail crowd (standing fans against the rail) | `rail_<track>.png` | Central Park, Harlow |
+| Picket-fence grass bank | `picket_<track>.png` | Kinsley, Star Pelaw |
+| Sponsor banner strip (made-up sponsors) | `sponsors_romford.png`, `sponsors.png` (no name) | Romford (plain one also at Monmore, Sheffield) |
+| Clubhouse terrace | `clubhouse_<track>.png` | Brighton & Hove, Nottingham |
+| Small covered terrace | `covered_<track>.png` | Doncaster, Sunderland |
+| Modern steel stand | `steel_<track>.png` | Newcastle, Sheffield |
+| Wooden bleachers | `bleachers_<track>.png` | Oxford, Yarmouth |
+| Beer garden and hospitality | `garden_<track>.png` | Towcester, Monmore, Dunstall Park, The Valley |
+
+`<track>` is the track's id from `data/tracks.json` (for example `garden_dunstallpark.png`).
+Each track lists its own section first in `"stands"`, and the first stand is
+placed opposite the winning line. `assets/source/track_stands_sheet.png` shows
+one of each on magenta, which is handy to give Copilot as a style picture. To
+use Copilot art instead, replace a PNG with a picture of about the same height,
+sky see-through, rail along the bottom edge.
+
+**Same background every lap.** The background is tied to the place on the track,
+not to how far the dogs have run: each repeating layer fits a whole number of
+times into one lap, so on a two-lap race the dogs pass the same stands at the
+same point both times (and every race at a track shows the same stand by the line).
 
 ## Greyhound frames (placeholder sheet)
 

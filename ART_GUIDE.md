@@ -74,6 +74,34 @@ the tool. If you make a new boards picture, keep the same 4 x 7 grid, or change
 `COLS` and `ROWS` in the tool. The placeholders `stand.png` and `hoardings.png`
 are still there; point the manifest back at them to use them.
 
+## A different grandstand at each track
+
+Dave's sheet of stands (`assets/source/stands_sheet_designer.png`) is cut up by
+the same tool into one picture per stand:
+
+| File | Stand |
+|------|-------|
+| `stand_standard_a.png` | Standard stand A (red roof) |
+| `stand_standard_b.png` | Standard stand B (grey roof) |
+| `stand_heritage.png` | Heritage stand |
+| `stand_premium.png` | Premium stand |
+| `stand_terrace.png` | Open terrace |
+| `stand_pavilion.png` | Executive pavilion |
+| `stand_tournament.png` | Tournament stand (added on competition nights) |
+
+The corner stand on the sheet is left out because it's drawn at an angle.
+The tool keys out the black background, leaves out the labels (each stand's box
+is in `STANDS` at the top of the tool) and shrinks every stand by the same amount,
+so big stands still look big (none taller than 84 pixels).
+
+Each track picks its stands with `"stands"` in `data/tracks.json`, for example
+`"stands": ["pavilion", "premium"]`. They are drawn side by side in that order,
+bottoms lined up, and repeat along the straight. On competition nights the stand
+named by `cupStand` in the manifest goes first. Stands can be any width and
+height: to add one, put the PNG in `assets/sprites`, add a line under
+`"stands"` in the manifest, and use its name in `tracks.json`. A track with no
+`"stands"` uses `stand_designer.png`.
+
 ## Greyhound frames (placeholder sheet)
 
 The 8 frames are one full stride of a gallop, played in a loop, left to right:

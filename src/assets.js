@@ -21,5 +21,12 @@ export async function loadAssets(base = 'assets/') {
   const layers = await Promise.all(
     manifest.background.layers.map(async (layer) => ({ ...layer, image: await loadImage(base + layer.file) })),
   );
-  return { manifest, sprites, layers, view: manifest.raceView };
+  // Grandstands each track can choose from (see "stands" in data/tracks.json).
+  const stands = {};
+  await Promise.all(
+    Object.entries(manifest.background.stands || {})
+      .filter(([name]) => !name.startsWith('_'))
+      .map(async ([name, spec]) => { stands[name] = await loadImage(base + spec.file); }),
+  );
+  return { manifest, sprites, layers, stands, cupStand: manifest.background.cupStand, view: manifest.raceView };
 }

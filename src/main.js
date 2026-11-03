@@ -6,7 +6,7 @@ import { loadGameData } from './data.js';
 import { randomSeed } from './rng.js';
 import { STYLES } from './dogs.js';
 import { TRACKS, trackById, raceDistance } from './track.js';
-import { simulateRace, DOG_LENGTH_M } from './sim.js';
+import { simulateRace, DOG_LENGTH_M, finishingStyle } from './sim.js';
 import { RaceView, PRE_START } from './raceView.js';
 import { raceSound, raceSoundEnd, unlockSound, setMuted } from './sound.js';
 import { MiniMap } from './minimap.js';
@@ -39,6 +39,11 @@ const SCREENS = ['screen-new', 'screen-lobby', 'screen-kennel', 'screen-sales', 
 /** A track's distances in one line, e.g. "D 255 · A 445 · S 655 · H 445". */
 const distanceLine = (t) => Object.entries(CLASSES).filter(([k]) => raceDistance(t, k))
   .map(([k, c]) => `<span class="nowrap" title="${CLASS_LABEL[k]}">${c.prefix} ${raceDistance(t, k)}m</span>`).join(' · ');
+/** " · Fast away" or " · Strong finisher" for dogs with a clear running style. */
+const paceLabel = (dog) => {
+  const f = finishingStyle(dog.stats);
+  return f <= -0.4 ? ' · Fast away' : f >= 0.4 ? ' · Strong finisher' : '';
+};
 const trackShort = (id) => (trackById(id)?.name || id).slice(0, 3);
 
 const state = {
@@ -438,7 +443,7 @@ function renderCard() {
         <span class="runner-best">Best ${best ? best.toFixed(2) : '-'}</span>
         <button class="odds" data-trap="${trap}" ${race.off ? 'disabled' : ''} title="Back this dog to win">${m.odds}</button>
       </div>
-      <div class="runner-sub muted">${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · Trainer ${dog.trainer}</div>
+      <div class="runner-sub muted">${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label}${paceLabel(dog)} · Trainer ${dog.trainer}</div>
       <div class="pen">${penPicture(dog)}</div>
       ${hiddenStats(dog)}
       <div class="form-wrap">${formLines(dog)}</div>
@@ -614,7 +619,7 @@ function renderKennel() {
       </div>
       ${(dog.trophies || []).length ? `<div class="trophies">🏆 ${dog.trophies.map((t) => t.replace(/ \d+$/, '')).join(', ')}</div>` : ''}
       ${cupEntriesFor(dog)}
-      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · ${dog.runs.length} runs · earned ${money(dog.earnings || 0)}</div>
+      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label}${paceLabel(dog)} · ${dog.runs.length} runs · earned ${money(dog.earnings || 0)}</div>
       <div class="kennel-grid">
         <div>
           <div class="fit">Fitness <span class="fitbar"><span style="width:${dog.fitness}%"></span></span> <span class="${fitClass}">${dog.fitness}</span></div>
@@ -840,7 +845,7 @@ function renderSales() {
         ${item.kind === 'raced' ? `<span class="runner-form">${formFigures(dog)}</span>` : ''}
         <button class="primary buy" data-buy="${i}" ${world.balance < item.price ? 'disabled' : ''}>Buy £${item.price.toLocaleString('en-GB')}</button>
       </div>
-      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · ${item.kind === 'youngster' ? 'from a breeder, two trials at your track against ordinary dogs' : `from ${dog.trainer}'s kennel`}</div>
+      <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label}${paceLabel(dog)} · ${item.kind === 'youngster' ? 'from a breeder, two trials at your track against ordinary dogs' : `from ${dog.trainer}'s kennel`}</div>
       ${hiddenStats(dog)}
       <div class="form-wrap">${trials}</div>
     </article>`;

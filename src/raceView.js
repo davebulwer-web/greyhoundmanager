@@ -5,7 +5,8 @@ import { DT, FRAME_STRIDE, TAKE_OFF } from './sim.js';
 import { circumference, finishS, startS } from './track.js';
 
 export const PRE_START = 2.5; // seconds of hare running before the traps open
-export const CLOSE_UP = 1.5;  // how far the close-up camera zooms in while the dogs are running
+export const CLOSE_UP = 1.5;  // how far the close-up camera zooms in for the run to the line
+export const CLOSE_UP_FROM = 150; // metres from the finish where the close-up starts
 const OUT_SCALE = 3;          // the on-screen canvas is this many times the size of the scene
 
 const mod = (a, n) => ((a % n) + n) % n;
@@ -243,14 +244,14 @@ export class RaceView {
   }
 
   /**
-   * Copy the scene onto the screen. With close-up on, the camera eases in
-   * once the traps open (keeping the track and the advert boards in view, with
-   * the leader near the right) and eases back out when the race is over, so
-   * the stands are seen in the parade and at the finish.
+   * Copy the scene onto the screen. With close-up on, the camera stays wide
+   * (stands and all) for most of the race, eases in for the last CLOSE_UP_FROM
+   * metres (keeping the track and the advert boards in view, with the leader
+   * near the right) and eases back out once the leader is past the line.
    */
   present(t, leaderD, simStep, opts) {
     const { view } = this;
-    const running = t > 0.3 && leaderD < this.race.distance + 8;
+    const running = t > 0 && leaderD >= this.race.distance - CLOSE_UP_FROM && leaderD < this.race.distance + 8;
     const target = opts.closeUp && running ? CLOSE_UP : 1;
     if (opts.snap || simStep > 1) this.zoom = target;
     else this.zoom += (target - this.zoom) * Math.min(1, simStep * 2.5);

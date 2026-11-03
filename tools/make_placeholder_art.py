@@ -390,6 +390,27 @@ def make_grass():
     return img
 
 
+def make_hurdle():
+    """A flight of hurdles seen from the stand: it crosses the track, so on the
+    race screen it's a tall strip from the far lane (top) to the rail (bottom).
+    Each brush panel leans towards the dogs coming at it (to the left)."""
+    W, H = 14, 100
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    rnd = random.Random(5)
+    for top in range(0, H - 6, 9):
+        # white frame leaning left, brush on top of it
+        d.line([(9, top + 12), (4, top)], fill=rgba((236, 236, 236)), width=2)
+        d.line([(11, top + 12), (11, top + 5)], fill=rgba((200, 200, 206)))
+        for k in range(18):
+            x = rnd.randint(3, 10)
+            y = top + rnd.randint(0, 8)
+            img.putpixel((x, y), rgba(rnd.choice([(92, 120, 54), (120, 98, 52), (70, 98, 44), (140, 120, 70)])))
+    # dark base line where it meets the sand
+    d.line([(4, H - 2), (12, H - 2)], fill=rgba((90, 70, 50)))
+    return img
+
+
 def save(img, name):
     path = os.path.join(OUT, name)
     img.save(path)
@@ -414,6 +435,7 @@ def main():
         "rail_near.png": make_rail(True),
         "sand.png": make_sand(),
         "grass.png": make_grass(),
+        "hurdle.png": make_hurdle(),
     }
     for name, img in outputs.items():
         save(img, name)

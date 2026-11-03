@@ -6,7 +6,7 @@
 
 import { makeRng } from './rng.js';
 import {
-  circumference, startS, segmentAt, bendMarkers, RACING_WIDTH,
+  circumference, startS, segmentAt, bendMarkers, RACING_WIDTH, hurdlePositions,
 } from './track.js';
 import { STYLES } from './dogs.js';
 
@@ -37,7 +37,13 @@ export const TUNING = {
   laneRateBend: 0.10,
   goingEffect: 0.0003,   // speed change per point of going (+ is slow)
   fitnessEffect: 0.00025, // speed lost per point of fitness below 100 (fitness 60 = 1% slower, about 3 lengths)
+  hurdleLoss: 1.3,       // m/s lost at each hurdle by the best jumper...
+  hurdleLossRange: 3.0,  // ...plus this much more for a jumping-0 dog
+  hurdleMistake: 0.01,   // chance of hitting a hurdle for the best jumper...
+  hurdleMistakeRange: 0.08, // ...plus this much more for a jumping-0 dog
+  hurdleMistakeLoss: [1.5, 3.5], // extra m/s lost when it hits one
 };
+export const TAKE_OFF = 1.6; // metres before a hurdle that a dog takes off (and lands after it)
 
 /** A tired dog (low fitness, 0-100) is slightly slower. Dogs without a fitness value are fully fit. */
 export function fitnessFactor(dog) {
@@ -96,6 +102,9 @@ function prepareRunner(rng, runner, track, going) {
     laneN: 0,
     maxBendLane: 0,
     wasLedAt: [],
+    jumping: (s.jumping ?? 50) / 100,
+    nextHurdle: 0,
+    hurdleHits: 0,
   };
 }
 
@@ -131,7 +140,7 @@ function whereLabel(seg, d, firstBendD) {
  * @param {number} opts.seed      random seed (same seed + same runners = same race)
  * @param {number} [opts.going]   track going, negative is fast, positive slow
  */
-export function simulateRace({ track, distance, runners, seed, going = 0 }) {
+export function simulateRace({ track, distance, runners, seed, going = 0, hurdles = false }) {
   const rng = makeRng(seed);
   const C = circumference(track);
   const s0 = startS(track, distance);
@@ -148,6 +157,7 @@ export function simulateRace({ track, distance, runners, seed, going = 0 }) {
     .sort((a, b) => a.d - b.d)
     .slice(0, 4);
   const firstBendD = markers.length ? markers[0].d : distance;
+  const flights = hurdles ? hurdlePositions(track, distance) : [];
 
   const field = runners.map((r) => prepareRunner(rng, r, track, going));
   const crossCounts = markers.map(() => 0);
@@ -227,6 +237,18 @@ export function simulateRace({ track, distance, runners, seed, going = 0 }) {
         if (prevD < m.d && r.d >= m.d) r.crossed[k] = ++crossCounts[k];
       });
 
+      // ---- Hurdles: every jump costs a little speed, a bad one costs a lot ----
+      const h = flights[r.nextHurdle];
+      if (h !== undefined && r.d >= h - TAKE_OFF) {
+        r.nextHurdle++;
+        r.v = Math.max(4, r.v - (TUNING.hurdleLoss + (1 - r.jumping) * TUNING.hurdleLossRange) * (0.7 + rng.next() * 0.6));
+        if (rng.chance(TUNING.hurdleMistake + (1 - r.jumping) * TUNING.hurdleMistakeRange)) {
+          r.v = Math.max(3, r.v - rng.range(...TUNING.hurdleMistakeLoss));
+          r.hurdleHits++;
+          logEvent(r, 'hurdle', `H${r.nextHurdle}`, t, 0);
+        }
+      }
+
       if (r.d >= distance) {
         r.finished = true;
         r.finishTime = t + DT * ((distance - prevD) / progress);
@@ -270,7 +292,8 @@ export function simulateRace({ track, distance, runners, seed, going = 0 }) {
     if (finishedCount === field.length && t - lastFinishT > 2.5) break;
   }
 
-  return buildResult({ track, distance, going, seed, field, frames, markers, firstBendD });
+  for (const r of field) r.jumpedClean = flights.length > 0 && r.hurdleHits === 0;
+  return buildResult({ track, distance, going, seed, field, frames, markers, firstBendD, flights });
 }
 
 // ---------------------------------------------------------------------------
@@ -297,8 +320,12 @@ function buildComments(r, position, bendPositions, fieldSize) {
 
   if (bendPositions[0] === 1) c.push(position === 1 && bendPositions.every((p) => p === 1) ? 'ALed' : 'EP');
 
+  if (r.hurdleHits) c.push('HitHdl');
+  else if (r.jumpedClean && r.jumping >= 0.72) c.push('JmpWl');
+
   const seen = new Set();
   for (const e of r.events) {
+    if (e.type === 'hurdle') continue;
     const tag = (e.type === 'crowded' ? 'Crd' : 'Bmp') + (e.where === 'run-up' ? 'RnUp' : e.where);
     if (!seen.has(tag) && seen.size < 3) { seen.add(tag); c.push(tag); }
   }
@@ -318,7 +345,7 @@ function buildComments(r, position, bendPositions, fieldSize) {
   return c.join(',');
 }
 
-function buildResult({ track, distance, going, seed, field, frames, markers, firstBendD }) {
+function buildResult({ track, distance, going, seed, field, frames, markers, firstBendD, flights = [] }) {
   const finishers = [...field].sort((a, b) => a.finishTime - b.finishTime);
   const winnerTime = finishers[0].finishTime;
   const sectionalD = firstBendD;
@@ -365,5 +392,6 @@ function buildResult({ track, distance, going, seed, field, frames, markers, fir
     results,
     winnerTime: +winnerTime.toFixed(2),
     sectionalDistance: +sectionalD.toFixed(0),
+    hurdles: flights,
   };
 }

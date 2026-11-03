@@ -14,7 +14,7 @@ export async function loadAssets(base = 'assets/') {
   const manifest = await (await fetch(`${base}manifest.json`)).json();
   const sprites = {};
   await Promise.all(
-    Object.entries(manifest.sprites).map(async ([key, spec]) => {
+    Object.entries(manifest.sprites).filter(([key]) => !key.startsWith('_')).map(async ([key, spec]) => {
       sprites[key] = { ...spec, image: await loadImage(base + spec.file) };
     }),
   );

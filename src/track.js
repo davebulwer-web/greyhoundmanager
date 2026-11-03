@@ -15,9 +15,51 @@ export const RACING_WIDTH = 3.6; // metres from the rail to the widest racing li
 // touching code. loadGameData() (src/data.js) fills this list at start-up.
 export const TRACKS = [];
 
+const OLD_ORDER = ['sprint', 'standard', 'stay', 'marathon'];
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']; // day 0 of the calendar is a Monday
+
 export function setTracks(list) {
   TRACKS.length = 0;
-  for (const t of list) TRACKS.push({ goingBase: 0, description: '', ...t });
+  list.forEach((t, i) => {
+    // Older tracks files listed distances as [sprint, standard, stay, marathon].
+    const distances = Array.isArray(t.distances)
+      ? Object.fromEntries(t.distances.slice(0, 3).map((d, k) => [OLD_ORDER[k], d]))
+      : { ...t.distances };
+    const nights = t.nights?.length ? t.nights : (i % 2 ? ['Tue', 'Thu', 'Sat'] : ['Mon', 'Wed', 'Fri']);
+    TRACKS.push({ goingBase: 0, description: '', ...t, distances, nights });
+  });
+}
+
+/** Does this track race on calendar day `day`? */
+export function racesOn(track, day) {
+  return !!track && track.nights.includes(WEEKDAYS[((day % 7) + 7) % 7]);
+}
+
+/** The distance a track runs a kind of race over (null if it doesn't stage them). */
+export function raceDistance(track, classKey) {
+  return track?.distances?.[classKey] ?? null;
+}
+
+/** Kinds of race a track stages, in the order of CLASSES. */
+export function classesAt(track, classKeys) {
+  return classKeys.filter((k) => raceDistance(track, k));
+}
+
+/**
+ * Where the hurdles are in a hurdle race, as distances from the traps: two
+ * flights on each straight, none in the first 20m or the last 15m.
+ */
+export function hurdlePositions(track, distance) {
+  const { straight: S, radius: R } = track;
+  const C = circumference(track);
+  const bend = Math.PI * R;
+  const s0 = startS(track, distance);
+  const spots = [bend + S * 0.3, bend + S * 0.7, 2 * bend + S * 1.3, 2 * bend + S * 1.7];
+  const out = [];
+  for (const s of spots) {
+    for (let d = mod(s - s0, C); d < distance; d += C) if (d >= 20 && distance - d >= 15) out.push(+d.toFixed(1));
+  }
+  return out.sort((a, b) => a - b);
 }
 
 export function trackById(id) {

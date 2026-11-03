@@ -1,33 +1,133 @@
 {
-  "_readme": "The tracks. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = race distances in metres, shortest first: [sprint, standard, stayers, marathon]. goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). stands = the grandstands along the home straight, in order, repeated along the track (names from \"stands\" in assets/manifest.json: standard_a, standard_b, heritage, premium, terrace, pavilion, tournament). On competition nights the tournament stand is added too. Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
+  "_readme": "The tracks. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = the race distances this track stages, in metres, by kind of race: sprint (D grades, 2 bends), standard (A grades, 4 bends), middle (B grades, a longer 4-bend trip), stay (S grades, 6 bends), marathon (M grades, 8 bends) and hurdle (H grades, over hurdles). Leave a kind out and the track doesn't stage those races. Every track needs a standard distance. nights = the nights of the week the track races (Mon Tue Wed Thu Fri Sat Sun). goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). stands = the grandstands along the home straight, in order, repeated along the track (names from \"stands\" in assets/manifest.json: standard_a, standard_b, heritage, premium, terrace, pavilion, tournament). On competition nights the tournament stand is added too. Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
   "tracks": [
     {
       "id": "kestrel", "name": "Kestrel Park",
-      "straight": 88, "radius": 36, "finishBeforeBend": 12,
-      "distances": [270, 460, 500, 640], "goingBase": 0,
+      "straight": 88, "radius": 36, "finishBeforeBend": 12, "goingBase": 0,
+      "distances": {"sprint": 255, "standard": 445, "middle": 475, "stay": 655, "marathon": 845, "hurdle": 445},
+      "nights": ["Tue", "Thu", "Sat"],
       "stands": ["standard_a", "standard_b"],
       "description": "A galloping, fair track with long straights."
     },
     {
       "id": "marsh", "name": "Marsh Lane",
-      "straight": 70, "radius": 33, "finishBeforeBend": 9,
-      "distances": [250, 400, 465, 600], "goingBase": -5,
+      "straight": 70, "radius": 33, "finishBeforeBend": 9, "goingBase": -5,
+      "distances": {"sprint": 215, "standard": 380, "stay": 560, "hurdle": 380},
+      "nights": ["Mon", "Wed", "Fri"],
       "stands": ["terrace"],
       "description": "Tight bends that suit sharp railers."
     },
     {
       "id": "ashby", "name": "Ashby Vale",
-      "straight": 95, "radius": 39, "finishBeforeBend": 14,
-      "distances": [290, 480, 525, 690], "goingBase": 0,
+      "straight": 95, "radius": 39, "finishBeforeBend": 14, "goingBase": 0,
+      "distances": {"sprint": 275, "standard": 480, "middle": 510, "stay": 710, "marathon": 915},
+      "nights": ["Wed", "Fri", "Sat"],
       "stands": ["heritage"],
       "description": "Big, wide and stamina sapping."
     },
     {
       "id": "harbour", "name": "Harbour Road",
-      "straight": 80, "radius": 35, "finishBeforeBend": 10,
-      "distances": [265, 450, 515, 630], "goingBase": 10,
+      "straight": 80, "radius": 35, "finishBeforeBend": 10, "goingBase": 10,
+      "distances": {"sprint": 240, "standard": 420, "stay": 620, "hurdle": 420},
+      "nights": ["Mon", "Thu", "Sat"],
       "stands": ["pavilion", "premium"],
       "description": "A sandy, slightly slow surface."
+    },
+    {
+      "id": "ravensgate", "name": "Ravensgate",
+      "straight": 76, "radius": 34, "finishBeforeBend": 11, "goingBase": 0,
+      "distances": {"sprint": 230, "standard": 400, "middle": 430, "stay": 595},
+      "nights": ["Tue", "Fri", "Sun"],
+      "stands": ["standard_b"],
+      "description": "A busy town track with a short run to the first bend."
+    },
+    {
+      "id": "eastholm", "name": "Eastholm Stadium",
+      "straight": 92, "radius": 38, "finishBeforeBend": 13, "goingBase": -5,
+      "distances": {"sprint": 265, "standard": 465, "middle": 500, "stay": 690, "marathon": 890, "hurdle": 465},
+      "nights": ["Mon", "Wed", "Sat"],
+      "stands": ["premium", "standard_a"],
+      "description": "A big, fast track that stages the best racing in the east."
+    },
+    {
+      "id": "brackwater", "name": "Brackwater",
+      "straight": 72, "radius": 32, "finishBeforeBend": 9, "goingBase": 5,
+      "distances": {"sprint": 220, "standard": 380, "stay": 565},
+      "nights": ["Tue", "Thu", "Sun"],
+      "stands": ["terrace"],
+      "description": "Small and tight, with deep sand after rain."
+    },
+    {
+      "id": "millbrook", "name": "Millbrook",
+      "straight": 84, "radius": 36, "finishBeforeBend": 12, "goingBase": 0,
+      "distances": {"sprint": 250, "standard": 435, "middle": 465, "stay": 645, "hurdle": 435},
+      "nights": ["Mon", "Thu", "Sat"],
+      "stands": ["standard_a"],
+      "description": "A fair, galloping circuit with plenty of hurdle racing."
+    },
+    {
+      "id": "gullhaven", "name": "Gullhaven",
+      "straight": 78, "radius": 35, "finishBeforeBend": 10, "goingBase": 5,
+      "distances": {"sprint": 235, "standard": 415, "stay": 610},
+      "nights": ["Wed", "Fri", "Sun"],
+      "stands": ["heritage", "terrace"],
+      "description": "A seaside track; the wind off the sea slows the times."
+    },
+    {
+      "id": "stonecross", "name": "Stonecross",
+      "straight": 86, "radius": 37, "finishBeforeBend": 12, "goingBase": 0,
+      "distances": {"sprint": 255, "standard": 445, "middle": 475, "stay": 660, "marathon": 850},
+      "nights": ["Tue", "Fri", "Sat"],
+      "stands": ["pavilion"],
+      "description": "Smooth bends and a long run-in suit late finishers."
+    },
+    {
+      "id": "highmoor", "name": "Highmoor",
+      "straight": 74, "radius": 33, "finishBeforeBend": 10, "goingBase": 10,
+      "distances": {"sprint": 225, "standard": 390, "stay": 580},
+      "nights": ["Mon", "Wed", "Fri"],
+      "stands": ["standard_b", "terrace"],
+      "description": "An exposed moorland track that rides slow."
+    },
+    {
+      "id": "westcombe", "name": "Westcombe",
+      "straight": 90, "radius": 38, "finishBeforeBend": 13, "goingBase": -5,
+      "distances": {"sprint": 265, "standard": 460, "middle": 490, "stay": 685, "hurdle": 460},
+      "nights": ["Thu", "Sat", "Sun"],
+      "stands": ["premium"],
+      "description": "Wide, fast and very fair to every trap."
+    },
+    {
+      "id": "foxley", "name": "Foxley Fields",
+      "straight": 80, "radius": 34, "finishBeforeBend": 11, "goingBase": 0,
+      "distances": {"sprint": 235, "standard": 410, "stay": 610, "hurdle": 410},
+      "nights": ["Tue", "Thu", "Sat"],
+      "stands": ["heritage"],
+      "description": "A friendly country track with a famous hurdles night."
+    },
+    {
+      "id": "furnace", "name": "Furnace Lane",
+      "straight": 70, "radius": 31, "finishBeforeBend": 9, "goingBase": 0,
+      "distances": {"sprint": 210, "standard": 370, "stay": 545},
+      "nights": ["Mon", "Wed", "Fri"],
+      "stands": ["terrace", "standard_a"],
+      "description": "The tightest track around: early pace is everything."
+    },
+    {
+      "id": "pennant", "name": "Pennant Downs",
+      "straight": 96, "radius": 40, "finishBeforeBend": 14, "goingBase": 0,
+      "distances": {"sprint": 280, "standard": 485, "middle": 520, "stay": 725, "marathon": 930},
+      "nights": ["Wed", "Fri", "Sun"],
+      "stands": ["pavilion", "standard_b"],
+      "description": "The biggest track of all, a real test of stamina."
+    },
+    {
+      "id": "northgate", "name": "Northgate",
+      "straight": 82, "radius": 35, "finishBeforeBend": 11, "goingBase": 5,
+      "distances": {"sprint": 240, "standard": 420, "middle": 450, "stay": 625},
+      "nights": ["Tue", "Thu", "Sat"],
+      "stands": ["standard_a", "heritage"],
+      "description": "A northern track with honest, galloping bends."
     }
   ]
 }

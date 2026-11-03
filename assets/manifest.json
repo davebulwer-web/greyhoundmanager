@@ -110,7 +110,15 @@
     },
     "finishPost": {
       "file": "sprites/finish_post.png"
-    }
+    },
+    "hurdle": {
+      "file": "sprites/hurdle.png",
+      "anchorX": 8,
+      "bottom": 220,
+      "jumpHeight": 14,
+      "notes": "One flight of hurdles, seen from the stand: a tall strip from the far side of the track (top) down to the rail (bottom). anchorX is the pixel that sits on the hurdle's position; 'bottom' is the screen line its bottom edge stands on. jumpHeight is how many pixels a dog rises as it clears it. Made by tools/make_placeholder_art.py."
+    },
+    "_jumpNotes": "Optional: add 'greyhoundJump' and 'jacketJump' entries laid out like 'greyhound' and 'jacket' (one row per coat / per trap, frames left to right from take-off to landing) and dogs will use them over hurdles. Without them the gallop frames are lifted over the hurdle."
   },
   "background": {
     "_notes": "Layers drawn back to front. 'y' is the top edge on the 640x240 race screen. 'scroll' is how fast it moves with the camera (1 = with the track, 0 = fixed). 'repeat' tiles the image sideways.",

@@ -3,7 +3,7 @@
 
 import { makeRng } from './rng.js';
 import { makeDog, overallRating } from './dogs.js';
-import { trackById } from './track.js';
+import { trackById, raceDistance } from './track.js';
 import { simulateRace } from './sim.js';
 import { breedingDay, newSeason, isNewSeason } from './breeding.js';
 import { cupById } from './cups.js';
@@ -11,6 +11,7 @@ import { cupById } from './cups.js';
 const cupHost = (inst) => cupById(inst.cupId).trackId;
 import {
   CLASSES, trackState, standardTime, addLedger, isMine, finishToday, calcTime, tracksRacingOn, todaysMeeting,
+  gradeLevel, classTweak,
 } from './world.js';
 
 /** Everything money-related in one place, so it can be balanced easily. */
@@ -19,7 +20,7 @@ export const ECONOMY = {
   trainingPerDay: 2,    // extra per day for a dog on special training
   sellShare: 0.6,       // a dog sells for this share of its value
   salesEvery: 7,        // days between new dogs coming up for sale
-  gradeValue: [2400, 1700, 1250, 950, 700, 520, 400, 300], // value of a 2-3 year old by grade (A1 first)
+  gradeValue: [2400, 1700, 1250, 950, 700, 520, 400, 300, 240, 200, 170], // value of a 2-3 year old by grade (A1 first; other grades count as the A grade they're worth)
 };
 
 /**
@@ -34,6 +35,7 @@ export const TRAINING = {
   gallops: { label: 'Gallops', stats: ['topSpeed'], recovery: 0.08, cost: ECONOMY.trainingPerDay, help: 'Flat-out work for top speed.' },
   distance: { label: 'Distance work', stats: ['stamina'], recovery: 0.08, cost: ECONOMY.trainingPerDay, help: 'Longer runs to build stamina.' },
   bends: { label: 'Bend work', stats: ['cornering'], recovery: 0.1, cost: ECONOMY.trainingPerDay, help: 'Schooling round the bends to keep speed and stay tidy.' },
+  hurdling: { label: 'Hurdle schooling', stats: ['jumping'], recovery: 0.1, cost: ECONOMY.trainingPerDay, help: 'Schooling over hurdles: cleaner, quicker jumps.' },
   schooling: { label: 'Schooling', stats: ['consistency'], recovery: 0.12, cost: ECONOMY.trainingPerDay, help: 'Steady trials to make a dog more reliable.' },
 };
 export const RACE_FITNESS_COST = 18;
@@ -41,7 +43,7 @@ const GAIN_PER_DAY = 0.16;     // ability points a day on special training, when
 const NORMAL_GAIN = 0.03;
 
 export const STAT_LABELS = {
-  breakSpeed: 'Break', earlyPace: 'Early pace', topSpeed: 'Top speed', stamina: 'Stamina', cornering: 'Bends', consistency: 'Consistency',
+  breakSpeed: 'Break', earlyPace: 'Early pace', topSpeed: 'Top speed', stamina: 'Stamina', cornering: 'Bends', consistency: 'Consistency', jumping: 'Jumping',
 };
 
 function hashStr(str) {
@@ -73,9 +75,10 @@ export function takeOn(world, dog) {
 // Values, the sales and buying/selling
 
 export function dogValue(dog) {
-  const g = dog.classKey === 'standard' ? dog.grade : Math.min(7, dog.grade * 2 + 1);
+  const last = ECONOMY.gradeValue.length - 1;
+  const g = Math.max(0, Math.min(last, Math.round(gradeLevel(dog.classKey, dog.grade))));
   const ageFactor = dog.age <= 3 ? 1 : dog.age === 4 ? 0.7 : 0.4;
-  return Math.round((ECONOMY.gradeValue[Math.min(g, 7)] * ageFactor) / 10) * 10;
+  return Math.round((ECONOMY.gradeValue[g] * ageFactor) / 10) * 10;
 }
 
 export function sellPrice(dog) {
@@ -86,7 +89,8 @@ export function sellPrice(dog) {
 function runTrials(world, dog, rng) {
   const track = trackById(world.player.homeTrack);
   const ts = world.tracks[track.id];
-  const distance = track.distances[CLASSES[dog.classKey].distIndex];
+  const distance = raceDistance(track, dog.classKey);
+  const hurdles = dog.classKey === 'hurdle';
   const trials = [];
   for (let i = 0; i < 2; i++) {
     const field = Array.from({ length: 5 }, () => makeDog(rng, { quality: 50 }));
@@ -95,12 +99,18 @@ function runTrials(world, dog, rng) {
     let k = 0;
     for (let t = 1; t <= 6; t++) runners.push({ trap: t, dog: t === trap ? dog : field[k++] });
     const going = rng.int(-2, 2) * 5;
-    const sim = simulateRace({ track, distance, runners, seed: rng.int(1, 1e9), going });
+    const sim = simulateRace({ track, distance, runners, seed: rng.int(1, 1e9), going, hurdles });
     const r = sim.results.find((x) => x.dog === dog);
     trials.push({ distance, trap, time: r.time, sectional: r.sectional, pos: r.position, going, calcTime: calcTime(r.time, going), comments: r.comments });
   }
-  const std = standardTime(ts, distance);
+  const std = standardTime(ts, distance, hurdles);
   return { trials, std };
+}
+
+/** Mostly standard-distance youngsters, sometimes another kind the home track stages. */
+function pickSaleClass(rng, track) {
+  const others = Object.keys(CLASSES).filter((k) => k !== 'standard' && raceDistance(track, k));
+  return others.length && rng.chance(0.35) ? rng.pick(others) : 'standard';
 }
 
 /** The dogs for sale this week: unraced youngsters with trial times, plus a few raced dogs. */
@@ -110,16 +120,15 @@ export function salesList(world) {
   const rng = makeRng(hashStr(`${world.seed}:sales:${world.day}`));
   const items = [];
   for (let i = 0; i < 5; i++) {
-    const classKey = rng.chance(0.15) ? 'sprint' : rng.chance(0.15) ? 'stay' : 'standard';
+    const classKey = pickSaleClass(rng, trackById(ts.trackId));
     const dog = makeDog(rng, { quality: 52 + rng.normal() * 10 });
-    if (classKey === 'sprint') { dog.stats.stamina = Math.max(5, dog.stats.stamina - 20); dog.stats.earlyPace = Math.min(98, dog.stats.earlyPace + 12); }
-    if (classKey === 'stay') dog.stats.stamina = Math.min(98, dog.stats.stamina + 25);
+    classTweak(dog, classKey);
     Object.assign(dog, { age: 2, classKey, runs: [], lastRunDay: -99, homeTrack: ts.trackId, trainer: 'Breeder', id: `p${world.nextId++}` });
     const { trials } = runTrials(world, dog, rng);
     dog.trials = trials;
     // The breeder prices from the trial times (they don't know the hidden abilities either).
     const best = Math.min(...trials.map((t) => t.calcTime));
-    const std = standardTime(ts, trials[0].distance);
+    const std = standardTime(ts, trials[0].distance, dog.classKey === 'hurdle');
     const lengthsFast = (std - best) / 0.08;
     const price = Math.max(150, Math.min(4000, Math.round((450 * Math.exp(lengthsFast / 7)) / 25) * 25));
     items.push({ dog, price, kind: 'youngster' });
@@ -137,9 +146,10 @@ export function salesList(world) {
 /** Grade an unraced dog from its ability, the way a racing manager would from trials. */
 export function gradeNewDog(ts, dog) {
   const cls = CLASSES[dog.classKey];
-  const distance = trackById(ts.trackId).distances[cls.distIndex];
+  const distance = raceDistance(trackById(ts.trackId), dog.classKey);
+  const h = dog.classKey === 'hurdle';
   const same = ts.dogs.filter((d) => d.classKey === dog.classKey);
-  const better = same.filter((d) => overallRating(d, distance) > overallRating(dog, distance)).length;
+  const better = same.filter((d) => overallRating(d, distance, h) > overallRating(dog, distance, h)).length;
   return Math.min(cls.grades - 1, Math.floor((better / Math.max(1, same.length)) * cls.grades));
 }
 
@@ -155,6 +165,22 @@ export function buyDog(world, item) {
   addLedger(world, `Bought ${dog.name}`, -item.price);
   world.sales.items = world.sales.items.filter((x) => x !== item);
   return { ok: true, message: `${dog.name} is yours.` };
+}
+
+/** Kinds of race your dog could switch to at your home track (other than its own). */
+export function switchOptions(world, dog) {
+  const track = trackById(world.player.homeTrack);
+  return Object.keys(CLASSES).filter((k) => k !== dog.classKey && raceDistance(track, k));
+}
+
+/** Move one of your dogs to another kind of race (e.g. hurdles). It's graded again from scratch. */
+export function switchClass(world, dog, classKey) {
+  const ts = world.tracks[world.player.homeTrack];
+  if (!switchOptions(world, dog).includes(classKey)) return { ok: false, message: 'Your track does not stage those races.' };
+  for (const inst of world.cups || []) inst.playerEntries = inst.playerEntries.filter((id) => id !== dog.id);
+  dog.classKey = classKey;
+  dog.grade = gradeNewDog(ts, dog);
+  return { ok: true, message: `${dog.name} will now run in ${CLASSES[classKey].name} races, graded ${CLASSES[classKey].prefix}${dog.grade + 1}.` };
 }
 
 export function sellDog(world, dog) {
@@ -183,7 +209,7 @@ export function trainerStars(world, dog) {
   const rng = makeRng(hashStr(`${world.seed}:${dog.id}:eye`));
   const out = {};
   for (const k of Object.keys(STAT_LABELS)) {
-    const guess = dog.stats[k] + rng.normal() * 6; // the same error every time, so changes show
+    const guess = (dog.stats[k] ?? 50) + rng.normal() * 6; // the same error every time, so changes show
     out[k] = Math.max(0.5, Math.min(5, Math.round(guess / 10) / 2));
   }
   return out;

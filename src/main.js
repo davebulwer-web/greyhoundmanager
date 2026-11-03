@@ -21,6 +21,11 @@ import {
   trainerStars, ECONOMY, RACE_FITNESS_COST,
 } from './kennel.js';
 import { saveGame, loadGame, exportSave, importSave, deleteSave } from './save.js';
+import { buildCommentary } from './commentary.js';
+import {
+  breedingState, retireDog, rehome, studBook, mate, canMate, sellPuppy, BREEDING, defaultPrefix,
+} from './breeding.js';
+import { cupsByDate, cupById, entryProblem, cupTrack, SEASON_DAYS, seasonOf } from './cups.js';
 
 const $ = (id) => document.getElementById(id);
 const money = (x) => `${x < 0 ? '-' : ''}£${Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -28,7 +33,9 @@ const trapBadge = (trap) => `<span class="trap trap-${trap}">${trap}</span>`;
 const COAT_LABEL = { 'white-black': 'white & black', 'red-fawn': 'red fawn' };
 const CLASS_LABEL = { sprint: 'Sprinter', standard: 'Standard', stay: 'Stayer' };
 const STAT_KEYS = [['breakSpeed', 'Brk'], ['earlyPace', 'Early'], ['topSpeed', 'Speed'], ['stamina', 'Stam'], ['cornering', 'Bends'], ['consistency', 'Consist']];
-const SCREENS = ['screen-new', 'screen-lobby', 'screen-kennel', 'screen-sales', 'screen-calendar', 'screen-accounts', 'screen-game', 'screen-meeting', 'loading'];
+const SCREENS = ['screen-new', 'screen-lobby', 'screen-kennel', 'screen-sales', 'screen-breeding', 'screen-cups', 'screen-calendar',
+  'screen-accounts', 'screen-game', 'screen-help', 'screen-meeting', 'loading'];
+const trackShort = (id) => (trackById(id)?.name || id).slice(0, 3);
 
 const state = {
   world: null, meeting: null, track: null,
@@ -60,6 +67,8 @@ const RENDER = {
   'screen-kennel': renderKennel,
   'screen-sales': renderSales,
   'screen-calendar': renderCalendar,
+  'screen-breeding': renderBreeding,
+  'screen-cups': renderCups,
   'screen-accounts': renderAccounts,
   'screen-game': renderGame,
 };
@@ -102,7 +111,8 @@ function startNewGame() {
   show('loading');
   setTimeout(() => {
     deleteSave();
-    state.world = createWorld(randomSeed(), { name, homeTrack: state.newTrack });
+    const prefix = $('new-prefix').value.trim() || defaultPrefix(name);
+    state.world = createWorld(randomSeed(), { name, homeTrack: state.newTrack, prefix });
     const dog = giveStarterDog(state.world);
     save();
     showLobby(`<b>Welcome to ${trackById(state.newTrack).name}.</b> Your first greyhound is <b>${dog.name}</b>, graded ${gradeLabel(dog.classKey, dog.grade)}. Have a look at the <b>Kennel</b>, then buy another dog or go racing.`);
@@ -156,9 +166,12 @@ function showLobby(note = '') {
     const button = status === 'over'
       ? '<div class="muted">Racing is over here tonight.</div>'
       : `<button class="primary" data-track="${t.id}">${status === 'started' ? 'Back to the meeting' : 'Go racing'}</button>`;
+    const cupTonight = (world.cups || []).filter((c) => cupById(c.cupId)?.trackId === t.id && Object.values(c.days).includes(world.day))
+      .map((c) => { const r = Object.keys(c.days).find((k) => c.days[k] === world.day); return `${cupById(c.cupId).name} ${r === 'heats' ? 'heats' : r === 'semis' ? 'semi-finals' : 'final'}`; });
     return `
     <div class="meeting-card ${t.id === home ? 'home' : ''}">
       <div class="meeting-card-name">${t.name}${t.id === home ? ' <span class="home-tag">your track</span>' : ''}</div>
+      ${cupTonight.length ? `<div class="cup-tonight">🏆 ${cupTonight.join(', ')} tonight</div>` : ''}
       <div class="muted">${t.description}</div>
       <div>Sprint ${t.distances[0]}m · Standard ${t.distances[1]}m · Stayers ${t.distances[2]}m</div>
       ${button}
@@ -166,6 +179,9 @@ function showLobby(note = '') {
   }).join('');
   $('lobby-meetings').querySelectorAll('button[data-track]').forEach((b) =>
     b.addEventListener('click', () => enterMeeting(b.dataset.track)));
+  const news = (world.news || []).slice(0, 8);
+  $('lobby-news').innerHTML = news.length
+    ? `<h2 class="sub">News</h2><ul class="news">${news.map((n) => `<li><span class="muted">${formatDay(n.day, false)}</span> ${n.text}</li>`).join('')}</ul>` : '';
   show('screen-lobby');
 }
 
@@ -194,7 +210,7 @@ function leaveMeeting() {
   showLobby();
 }
 
-function nextDay() {
+function nextDay(days = 1) {
   if (state.mode === 'running') finishRace();
   state.meeting = null;
   state.mode = 'pre';
@@ -202,12 +218,13 @@ function nextDay() {
   show('loading');
   setTimeout(() => {
     const before = state.world.balance;
-    const lines = advanceDay(state.world);
+    const lines = [];
+    for (let i = 0; i < days; i++) lines.push(...advanceDay(state.world));
     save();
     const change = state.world.balance - before;
     const notes = [];
-    if (lines.length) notes.push(`<b>Bets settled overnight:</b><br>${lines.join('<br>')}`);
-    notes.push(`Overnight your money went ${change >= 0 ? 'up' : 'down'} ${money(Math.abs(change))} (prizes, fees and kennel bills: see Accounts).`);
+    if (lines.length) notes.push(`<b>Bets settled:</b><br>${lines.join('<br>')}`);
+    notes.push(`${days > 1 ? `Over the last ${days} days` : 'Overnight'} your money went ${change >= 0 ? 'up' : 'down'} ${money(Math.abs(change))} (prizes, fees and bills: see Accounts).`);
     const tired = myDogs(state.world).filter((d) => d.fitness < 60);
     if (tired.length) notes.push(`Looking tired: ${tired.map((d) => `${d.name} (fitness ${d.fitness})`).join(', ')}. Rest helps.`);
     if (state.world.balance < 0) notes.push('<span class="lost">You are overdrawn. Sell a dog or win some bets.</span>');
@@ -227,12 +244,13 @@ function goLive(race) {
   // Work the race out now so the dogs can stand in the traps; the result is
   // only revealed (and written into the form book) when they cross the line.
   state.liveSim = simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
+  state.commentary = buildCommentary(state.liveSim);
   state.t = -PRE_START;
   state.mode = 'pre';
   state.raceView.setRace(state.liveSim, track);
   state.map.setRace(state.liveSim, track);
   $('meeting').textContent = `Race ${race.no} · ${race.time}`;
-  $('race-info').textContent = `${race.distance}m · Grade ${race.gradeLabel}`;
+  $('race-info').textContent = `${race.distance}m · ${race.title || `Grade ${race.gradeLabel}`}`;
   $('map-track').textContent = track.name;
   $('map-going').textContent = `Going ${meeting.going > 0 ? '+' : ''}${meeting.going}`;
   $('map-foot').textContent = `${race.distance}m`;
@@ -320,6 +338,10 @@ function render(snap = false) {
   }).join('');
   const left = Math.max(0, Math.ceil(race.distance - leadD));
   $('dist-left').textContent = left > 0 ? `${left}m` : 'FINISH';
+  // Commentary: the latest line that has happened.
+  const said = (state.commentary || []).filter((l) => l.t <= state.t);
+  const line = said[said.length - 1];
+  $('commentary').textContent = state.t < 0 ? 'The hare is running…' : line ? line.text : '';
 }
 
 function loop() {
@@ -378,12 +400,12 @@ function formLines(dog, n = 5) {
   if (!dog.runs.length) return '<p class="muted">No form yet.</p>';
   const rows = dog.runs.slice(0, n).map((r) => `
     <tr>
-      <td>${formatShortDate(r.day)}</td><td>${r.distance}</td><td>[${r.trap}]</td><td>${r.sectional.toFixed(2)}</td>
+      <td>${formatShortDate(r.day)}</td><td>${trackShort(r.trackId)}</td><td>${r.distance}</td><td>[${r.trap}]</td><td>${r.sectional.toFixed(2)}</td>
       <td>${r.bends}</td><td class="fin">${ordinal(r.pos)}</td><td>${r.by}</td><td>${r.other}</td>
       <td class="remarks">${r.comments}</td><td>${r.winTime.toFixed(2)}</td><td>${r.going > 0 ? '+' : ''}${r.going}</td>
       <td>${r.sp}</td><td>${r.grade}</td><td>${r.calcTime.toFixed(2)}</td>
     </tr>`).join('');
-  return `<table class="form"><thead><tr><th>Date</th><th>Dis</th><th>Trp</th><th>Sec</th><th>Bends</th><th>Fin</th><th>By</th><th>Win/2nd</th><th>Remarks</th><th>WnTm</th><th>Gng</th><th>SP</th><th>Grd</th><th>CalTm</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table class="form"><thead><tr><th>Date</th><th>Trk</th><th>Dis</th><th>Trp</th><th>Sec</th><th>Bends</th><th>Fin</th><th>By</th><th>Win/2nd</th><th>Remarks</th><th>WnTm</th><th>Gng</th><th>SP</th><th>Grd</th><th>CalTm</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 const hiddenStats = (dog) => `<div class="hidden-stats">${STAT_KEYS.map(([k, l]) => `${l} ${Math.round(dog.stats[k])}`).join(' · ')}</div>`;
@@ -392,9 +414,10 @@ function renderCard() {
   const race = state.view;
   if (!race) return;
   if (isRun(race)) { renderResult(race); return; }
-  $('card-title').textContent = `Racecard · Race ${race.no} · ${race.time} · ${race.gradeLabel} ${race.distance}m`;
-  const { places } = prizes(race.classKey, race.grade);
-  $('card').innerHTML = `<p class="muted">Prizes: 1st £${places[0]}, 2nd £${places[1]}, 3rd £${places[2]}. Every runner gets £25.</p>` + race.runners.map(({ trap, dog }) => {
+  $('card-title').textContent = `Racecard · Race ${race.no} · ${race.time} · ${race.title || race.gradeLabel} ${race.distance}m`;
+  const places = race.cup ? (race.cup.round === 'final' ? cupById(race.cup.key.split(':')[0]).prizes : []) : prizes(race.classKey, race.grade).places;
+  const prizeLine = places.length ? `Prizes: 1st £${places[0]}, 2nd £${places[1]}, 3rd £${places[2]}.` : 'The first three go through to the next round.';
+  $('card').innerHTML = `<p class="muted">${prizeLine} Every runner gets £25.</p>` + race.runners.map(({ trap, dog }) => {
     const m = race.market.runners.find((x) => x.trap === trap);
     const best = bestTime(dog, race.distance);
     return `
@@ -425,7 +448,7 @@ function renderResult(race) {
   const res = race.result.results;
   const div = dividends(race.market, res.map((r) => r.trap));
   const sp = new Map(race.market.runners.map((m) => [m.trap, m.odds]));
-  $('card-title').textContent = `Result · Race ${race.no} · ${race.gradeLabel} ${race.distance}m`;
+  $('card-title').textContent = `Result · Race ${race.no} · ${race.title || race.gradeLabel} ${race.distance}m`;
   $('card').innerHTML = `
     <table class="card result">
       <thead><tr><th>Pos</th><th>Trap</th><th>Greyhound</th><th>By</th><th>SP</th><th>Time</th><th>Sec</th><th>Bends</th><th>Remarks</th></tr></thead>
@@ -445,6 +468,7 @@ function replay(race) {
   const { meeting, track } = state;
   state.live = race;
   state.liveSim = simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
+  state.commentary = buildCommentary(state.liveSim);
   state.raceView.setRace(state.liveSim, track);
   state.map.setRace(state.liveSim, track);
   $('meeting').textContent = `Replay · Race ${race.no} · ${race.time}`;
@@ -574,8 +598,13 @@ function renderKennel() {
         <span class="grade-tag">${gradeLabel(dog.classKey, dog.grade)}</span>
         <span class="runner-form" title="Last six finishes, oldest first">${formFigures(dog) || '-'}</span>
         <span class="runner-best">Best ${best ? best.toFixed(2) : '-'}</span>
-        <button class="sell ${confirming ? 'primary' : ''}" data-sell="${dog.id}">${confirming ? `Sure? Sell for £${sellPrice(dog)}` : `Sell (£${sellPrice(dog)})`}</button>
+        <span class="head-buttons">
+          <button class="${state.confirm === `retire:${dog.id}` ? 'primary' : ''}" data-retire="${dog.id}">${state.confirm === `retire:${dog.id}` ? 'Sure? Retire' : dog.sex === 'Bitch' ? 'Retire to breed' : 'Retire to stud'}</button>
+          <button class="sell ${confirming ? 'primary' : ''}" data-sell="${dog.id}">${confirming ? `Sure? Sell for £${sellPrice(dog)}` : `Sell (£${sellPrice(dog)})`}</button>
+        </span>
       </div>
+      ${(dog.trophies || []).length ? `<div class="trophies">🏆 ${dog.trophies.map((t) => t.replace(/ \d+$/, '')).join(', ')}</div>` : ''}
+      ${cupEntriesFor(dog)}
       <div class="runner-sub muted">${CLASS_LABEL[dog.classKey]} · ${COAT_LABEL[dog.coat] || dog.coat} ${dog.sex.toLowerCase()}, ${dog.age} yrs, ${dog.weight}kg · ${STYLES[dog.style].label} · ${dog.runs.length} runs · earned ${money(dog.earnings || 0)}</div>
       <div class="kennel-grid">
         <div>
@@ -606,6 +635,16 @@ function renderKennel() {
     save();
     renderKennel();
   }));
+  $('kennel').querySelectorAll('[data-retire]').forEach((el) => el.addEventListener('click', () => {
+    const key = `retire:${el.dataset.retire}`;
+    if (state.confirm !== key) { state.confirm = key; renderKennel(); return; }
+    state.confirm = null;
+    const dog = dogs.find((d) => d.id === el.dataset.retire);
+    const role = retireDog(world, dog);
+    save();
+    renderKennel();
+    $('kennel-sum').textContent = `${dog.name} has retired ${role === 'brood' ? 'to breed: see Breeding' : 'to stud: see Breeding'}.`;
+  }));
   $('kennel').querySelectorAll('[data-sell]').forEach((el) => el.addEventListener('click', () => {
     const key = `sell:${el.dataset.sell}`;
     if (state.confirm !== key) { state.confirm = key; renderKennel(); return; }
@@ -615,6 +654,148 @@ function renderKennel() {
     renderKennel();
   }));
   $('chk-stats-k').addEventListener('change', (e) => { document.body.classList.toggle('show-stats', e.target.checked); $('chk-stats').checked = e.target.checked; });
+}
+
+function cupEntriesFor(dog) {
+  const list = cupsByDate(state.world).filter((c) => c.stage !== 'done' && (c.playerEntries.includes(dog.id)
+    || Object.values(c.field).flat(2).includes(dog.id)));
+  if (!list.length) return '';
+  return `<div class="cup-entry">🏆 Entered: ${list.map((c) => `${cupById(c.cupId).name} (${c.stage === 'entries' ? `heats ${formatDay(c.days.heats)}` : c.stage === 'semis' ? `semi-final ${formatDay(c.days.semis)}` : c.stage === 'final' ? `final ${formatDay(c.days.final)}` : c.stage})`).join(', ')}</div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Breeding
+
+function renderBreeding() {
+  const { world } = state;
+  updatePurse();
+  const b = breedingState(world);
+  const book = studBook(world);
+  $('breeding-sum').textContent = `Kennel prefix: ${b.prefix}`;
+  const dam = (d) => {
+    const problem = canMate(world, d);
+    const due = b.litters.find((l) => l.damId === d.id);
+    return `
+    <article class="runner">
+      <div class="runner-head"><span class="runner-name">${d.name}</span><span class="grade-tag">Brood bitch</span>
+        <span class="muted">${d.age} yrs · ${d.litters || 0} litter${d.litters === 1 ? '' : 's'}</span>
+        <button class="sell" data-rehome="${d.id}">${state.confirm === `rehome:${d.id}` ? 'Sure? Rehome' : 'Rehome'}</button></div>
+      ${hiddenStats(d)}
+      ${due ? `<div>In whelp to ${due.sire.name}: pups due ${formatDay(due.dueDay)}.</div>`
+        : problem ? `<div class="muted">${problem.replace(/day (\d+)/, (_, n) => formatDay(+n))}</div>`
+        : `<div class="slip-line">Mate with <select data-sire-for="${d.id}">${book.map((e, i) => `<option value="${i}">${e.dog.name}${e.own ? ' (yours, free)' : ` · ${gradeLabel(e.dog.classKey, e.dog.grade)} · £${e.fee}`}</option>`).join('')}</select>
+            <button class="primary" data-mate="${d.id}">Mate</button></div>`}
+    </article>`;
+  };
+  const studs = b.studs.map((d) => `
+    <article class="runner"><div class="runner-head"><span class="runner-name">${d.name}</span><span class="grade-tag">Stud dog</span>
+      <span class="muted">${d.age} yrs · free to use with your bitches</span>
+      <button class="sell" data-rehome="${d.id}">${state.confirm === `rehome:${d.id}` ? 'Sure? Rehome' : 'Rehome'}</button></div>${hiddenStats(d)}</article>`).join('');
+  const pups = b.puppies.map((x) => `
+    <tr><td>${x.dog.name}</td><td>${x.dog.sex === 'Dog' ? 'dog' : 'bitch'}, ${COAT_LABEL[x.dog.coat] || x.dog.coat}</td><td>${x.dog.sireName} x ${x.dog.damName}</td>
+      <td>${formatDay(x.readyDay)}</td><td><button data-sellpup="${x.dog.id}">Sell £${BREEDING.puppySale}</button></td></tr>`).join('');
+  $('breeding').innerHTML = `
+    <p class="muted">Retire a bitch from the Kennel to breed from her. Pups are born ${BREEDING.gestationDays} days after mating and are ready to race ${BREEDING.rearingDays} days later. They take after both parents, with some luck either way. Pups and retired dogs cost £${BREEDING.puppyUpkeep} a day each.</p>
+    <h2 class="sub">Brood bitches</h2>${b.broods.map(dam).join('') || '<p class="muted">None yet.</p>'}
+    <h2 class="sub">Pups</h2>${pups ? `<table class="card"><thead><tr><th>Name</th><th></th><th>Sire x Dam</th><th>Ready</th><th></th></tr></thead><tbody>${pups}</tbody></table>` : '<p class="muted">No pups at the moment.</p>'}
+    <h2 class="sub">Your stud dogs</h2>${studs || '<p class="muted">None yet. Retire a dog from the Kennel to stand him at stud.</p>'}
+    <h2 class="sub">Stud book at ${trackById(world.player.homeTrack).name}</h2>
+    <table class="card"><thead><tr><th>Dog</th><th>Grade</th><th>Form</th><th>Fee</th></tr></thead><tbody>
+      ${book.filter((e) => !e.own).map((e) => `<tr><td>${e.dog.name}</td><td>${gradeLabel(e.dog.classKey, e.dog.grade)}</td><td>${formFigures(e.dog)}</td><td>£${e.fee}</td></tr>`).join('')}
+    </tbody></table>
+    <p class="muted small">Kennel prefix <input id="prefix" maxlength="16" value="${b.prefix}"> <button id="btn-prefix">Change</button> (used for pups born from now on)</p>`;
+
+  $('breeding').querySelectorAll('[data-mate]').forEach((el) => el.addEventListener('click', () => {
+    const d = b.broods.find((x) => x.id === el.dataset.mate);
+    const entry = book[+$('breeding').querySelector(`[data-sire-for="${d.id}"]`).value];
+    const res = mate(world, d, entry);
+    save();
+    renderBreeding();
+    $('breeding-sum').textContent = res.message;
+  }));
+  $('breeding').querySelectorAll('[data-rehome]').forEach((el) => el.addEventListener('click', () => {
+    const key = `rehome:${el.dataset.rehome}`;
+    if (state.confirm !== key) { state.confirm = key; renderBreeding(); return; }
+    state.confirm = null;
+    rehome(world, [...b.broods, ...b.studs].find((x) => x.id === el.dataset.rehome));
+    save();
+    renderBreeding();
+  }));
+  $('breeding').querySelectorAll('[data-sellpup]').forEach((el) => el.addEventListener('click', () => {
+    sellPuppy(world, b.puppies.find((x) => x.dog.id === el.dataset.sellpup));
+    save();
+    renderBreeding();
+  }));
+  $('btn-prefix').addEventListener('click', () => {
+    b.prefix = $('prefix').value.trim() || b.prefix;
+    save();
+    renderBreeding();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Competitions
+
+function renderCups() {
+  const { world } = state;
+  updatePurse();
+  const season = seasonOf(world.day);
+  const nextSeasonDay = (season + 1) * SEASON_DAYS;
+  $('cups-sum').textContent = `Season ${season + 1} · next season starts ${formatDay(nextSeasonDay)}`;
+  const nameOf = (id) => {
+    const d = findAnyDog(id);
+    return d ? `<span class="${isMine(d) ? 'mine-name' : ''}">${d.name}</span>` : '?';
+  };
+  const list = cupsByDate(world).filter((c) => c.season >= season - 1 && (c.stage !== 'done' || c.season >= season - 1));
+  $('cups').innerHTML = list.map((inst) => {
+    const cup = cupById(inst.cupId);
+    const track = cupTrack(inst);
+    const distance = track.distances[CLASSES[cup.classKey].distIndex];
+    const eligible = myDogs(world).filter((d) => !entryProblem(world, inst, d));
+    const rounds = ['heats', 'semis', 'final'].map((r) => {
+      const groups = r === 'final' ? (inst.field.final ? [inst.field.final] : []) : (inst.field[r] || []);
+      if (!groups.length) return '';
+      const res = inst.results[r] || [];
+      return `<div class="cup-round"><b>${r === 'heats' ? 'Heats' : r === 'semis' ? 'Semi-finals' : 'Final'}</b> <span class="muted">${formatDay(inst.days[r])}</span>
+        ${groups.map((ids, i) => `<div class="cup-group">${groups.length > 1 ? `${i + 1}: ` : ''}${(res[i] || ids).map((id, k) => `${res[i] ? `${k + 1}. ` : ''}${nameOf(id)}`).join(', ')}</div>`).join('')}</div>`;
+    }).join('');
+    return `
+    <article class="runner cup">
+      <div class="runner-head">
+        <span class="runner-name">🏆 ${cup.name}</span>
+        <span class="grade-tag">${track.name} ${distance}m</span>
+        <span class="muted">Season ${inst.season + 1}</span>
+      </div>
+      <div class="runner-sub muted">Heats ${formatDay(inst.days.heats)} · semi-finals ${formatDay(inst.days.semis)} · final ${formatDay(inst.days.final)} · entry £${cup.entryFee} · winner £${cup.prizes[0].toLocaleString('en-GB')}</div>
+      ${inst.stage === 'done' ? `<div>Won by <b>${nameOf(inst.winner)}</b>.</div>` : ''}
+      ${inst.playerEntries.length ? `<div>Your entries: ${inst.playerEntries.map(nameOf).join(', ')}</div>` : ''}
+      ${inst.stage === 'entries' && world.day < inst.days.heats
+        ? (eligible.length ? `<div class="slip-line">Enter <select data-cup="${inst.key}">${eligible.map((d) => `<option value="${d.id}">${d.name} (${gradeLabel(d.classKey, d.grade)})</option>`).join('')}</select> <button class="primary" data-enter-cup="${inst.key}" ${world.balance < cup.entryFee ? 'disabled' : ''}>Enter £${cup.entryFee}</button></div>`
+          : `<div class="muted">You have no ${cup.classKey === 'stay' ? 'stayers' : cup.classKey === 'sprint' ? 'sprinters' : 'standard-distance dogs'} to enter.</div>`) : ''}
+      ${rounds}
+    </article>`;
+  }).join('') + (world.trophies.length ? `<h2 class="sub">Your trophy cabinet</h2><ul class="news">${world.trophies.map((t) => `<li>🏆 ${t.cup}: ${t.dog} (${formatDay(t.day)})</li>`).join('')}</ul>` : '');
+
+  $('cups').querySelectorAll('[data-enter-cup]').forEach((el) => el.addEventListener('click', () => {
+    const inst = world.cups.find((c) => c.key === el.dataset.enterCup);
+    const dog = myDogs(world).find((d) => d.id === $('cups').querySelector(`[data-cup="${inst.key}"]`).value);
+    const cup = cupById(inst.cupId);
+    if (!dog || entryProblem(world, inst, dog) || world.balance < cup.entryFee) return;
+    inst.playerEntries.push(dog.id);
+    addLedger(world, `Entry fee: ${dog.name} in the ${cup.name}`, -cup.entryFee);
+    save();
+    renderCups();
+  }));
+}
+
+function findAnyDog(id) {
+  const { world } = state;
+  for (const ts of Object.values(world.tracks)) {
+    const d = ts.dogs.find((x) => x.id === id);
+    if (d) return d;
+  }
+  const b = breedingState(world);
+  return [...b.broods, ...b.studs].find((x) => x.id === id) || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -688,6 +869,8 @@ function renderAccounts() {
     ['Betting', (l) => l.text.startsWith('Bet')],
     ['Kennel bills', (l) => l.text.startsWith('Kennel bills')],
     ['Buying and selling dogs', (l) => /^(Bought|Sold) /.test(l.text)],
+    ['Competition entries', (l) => l.text.startsWith('Entry fee')],
+    ['Breeding (stud fees, pups sold)', (l) => /^(Stud fee|Sold pup)/.test(l.text)],
   ];
   $('accounts-sum').textContent = `Purse ${money(world.balance)}`;
   $('accounts').innerHTML = `
@@ -731,7 +914,13 @@ async function boot() {
   });
   $('btn-next-race').addEventListener('click', () => goLive(nextRace(state.meeting)));
   $('btn-leave').addEventListener('click', leaveMeeting);
-  $('btn-next-day').addEventListener('click', nextDay);
+  $('btn-next-day').addEventListener('click', () => nextDay(1));
+  $('btn-week').addEventListener('click', () => nextDay(7));
+  $('btn-full').addEventListener('click', () => {
+    const el = document.querySelector('.screen');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else el.requestFullscreen?.();
+  });
   document.querySelectorAll('#nav [data-screen]').forEach((b) => b.addEventListener('click', () => go(b.dataset.screen)));
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => {
     state.speed = +b.dataset.speed;

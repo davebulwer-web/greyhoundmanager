@@ -2,6 +2,8 @@
 // to by id, form lines are packed into short arrays to keep the save small).
 // serialize/deserialize have no DOM code; the storage helpers use localStorage.
 
+import { ensureCups } from './cups.js';
+
 const SAVE_KEY = 'greyhound-manager-save';
 const SAVE_VERSION = 1;
 
@@ -20,7 +22,7 @@ function packRace(race) {
   if (race.result) {
     out.result = {
       winnerTime: race.result.winnerTime,
-      results: race.result.results.map((r) => ({ ...r, dog: r.dog.id })),
+      results: race.result.results.map(({ events, ...r }) => ({ ...r, dog: r.dog.id })),
     };
   }
   return out;
@@ -35,7 +37,14 @@ export function serialize(world) {
     tracks[id] = { ...ts, dogs: ts.dogs.map(packDog), meetings };
   }
   const sales = world.sales && { ...world.sales, items: world.sales.items.map((it) => ({ ...it, dog: it.kind === 'youngster' ? packDog(it.dog) : it.dog.id })) };
-  return JSON.stringify({ ...world, saveVersion: SAVE_VERSION, savedAt: Date.now(), tracks, sales });
+  const p = world.player;
+  const player = {
+    ...p,
+    broods: (p.broods || []).map(packDog),
+    studs: (p.studs || []).map(packDog),
+    puppies: (p.puppies || []).map((x) => ({ ...x, dog: packDog(x.dog) })),
+  };
+  return JSON.stringify({ ...world, saveVersion: SAVE_VERSION, savedAt: Date.now(), tracks, sales, player });
 }
 
 export function deserialize(text) {
@@ -59,6 +68,17 @@ export function deserialize(text) {
       .map((it) => ({ ...it, dog: it.kind === 'youngster' ? { ...it.dog, runs: it.dog.runs.map(unpackRun) } : byId.get(it.dog) }))
       .filter((it) => it.dog);
   }
+  const unpackDog = (d) => ({ ...d, runs: d.runs.map(unpackRun) });
+  const p = data.player;
+  p.broods = (p.broods || []).map(unpackDog);
+  p.studs = (p.studs || []).map(unpackDog);
+  p.puppies = (p.puppies || []).map((x) => ({ ...x, dog: unpackDog(x.dog) }));
+  p.litters ||= [];
+  // Saves from before competitions and news existed.
+  data.trophies ||= [];
+  data.news ||= [];
+  data.cups ||= [];
+  ensureCups(data);
   delete data.saveVersion;
   delete data.savedAt;
   return data;

@@ -10,6 +10,7 @@ import { TRACKS, trackById } from './track.js';
 import { simulateRace, TUNING, SECONDS_PER_LENGTH, formatMargin } from './sim.js';
 import { priceRace } from './market.js';
 import { settleBet, betCost, describeBet } from './betting.js';
+import { ensureCups, cupRacesFor, cupRaceRun, cupById, CUPS } from './cups.js';
 
 /** Race classes: sprint (D grades), standard (A grades), stayers (S grades). */
 export const CLASSES = {
@@ -65,10 +66,34 @@ export const START_MONEY = 1500;
  * track your dogs are attached to.
  */
 export function createWorld(seed, player = { name: 'My Kennel', homeTrack: TRACKS[0].id }) {
-  return {
+  const world = {
     version: 1, seed, day: HISTORY_DAYS, balance: START_MONEY, tracks: {},
-    player: { ...player }, ledger: [], sales: null, nextId: 1,
+    player: { ...player }, ledger: [], sales: null, nextId: 1, cups: [], trophies: [], news: [],
   };
+  ensureCups(world);
+  return world;
+}
+
+/** Find any dog in the world by its id. */
+export function findDog(world, id) {
+  for (const ts of Object.values(world.tracks)) {
+    const d = ts.dogs.find((x) => x.id === id);
+    if (d) return d;
+  }
+  return null;
+}
+
+/** Ids of your dogs due to run in a competition round on `day` (they skip ordinary races that day). */
+function cupDogsOn(world, day) {
+  const ids = new Set();
+  for (const inst of world.cups || []) {
+    const round = Object.keys(inst.days).find((r) => inst.days[r] === day);
+    if (!round) continue;
+    if (round === 'heats') inst.playerEntries.forEach((id) => ids.add(id));
+    const f = inst.field[round];
+    if (f) (round === 'final' ? [f] : f).flat().forEach((id) => ids.add(id));
+  }
+  return ids;
 }
 
 /** Add a line to your accounts and change your money. */
@@ -90,6 +115,19 @@ export function prizes(classKey, grade) {
 // ---------------------------------------------------------------------------
 // Dog pools
 
+/** Sprinters are sharper and have less stamina; stayers the other way round. */
+export function classTweak(dog, classKey) {
+  const s = dog.stats;
+  if (classKey === 'sprint') {
+    s.stamina = Math.max(5, s.stamina - 20);
+    s.earlyPace = Math.min(98, s.earlyPace + 12);
+    s.breakSpeed = Math.min(98, s.breakSpeed + 8);
+  } else if (classKey === 'stay') {
+    s.stamina = Math.min(98, s.stamina + 25);
+    s.earlyPace = Math.max(5, s.earlyPace - 8);
+  }
+}
+
 function makePool(world, track) {
   const rng = makeRng(hash(`${world.seed}:${track.id}:pool`));
   const taken = new Set();
@@ -107,15 +145,7 @@ function makePool(world, track) {
       const litter = Math.min(want - group.length, rng.int(1, 3));
       for (let k = 0; k < litter; k++) {
         const dog = makeDog(rng, { quality: litterQuality + rng.normal() * 5, taken, firstWord });
-        const s = dog.stats;
-        if (classKey === 'sprint') {
-          s.stamina = Math.max(5, s.stamina - 20);
-          s.earlyPace = Math.min(98, s.earlyPace + 12);
-          s.breakSpeed = Math.min(98, s.breakSpeed + 8);
-        } else if (classKey === 'stay') {
-          s.stamina = Math.min(98, s.stamina + 25);
-          s.earlyPace = Math.max(5, s.earlyPace - 8);
-        }
+        classTweak(dog, classKey);
         Object.assign(dog, {
           classKey, trainer: rng.pick(trainers), homeTrack: track.id, runs: [], lastRunDay: -99,
         });
@@ -178,11 +208,26 @@ export function getMeeting(world, trackId, day = world.day) {
   const going = (track.goingBase || 0) + rng.int(-3, 3) * 5;
   const used = new Set();
   const races = [];
+  const busy = cupDogsOn(world, day);
+
+  // Competition rounds first, so their dogs aren't put in ordinary races.
+  for (const c of cupRacesFor(world, ts, day, (id) => findDog(world, id))) {
+    c.dogs.forEach((d) => used.add(d));
+    const seeded = c.dogs
+      .map((dog) => ({ dog, key: STYLE_RANK[dog.style] + rng.normal() * 0.7 }))
+      .sort((a, b) => a.key - b.key);
+    races.push({
+      classKey: c.classKey, grade: null, gradeLabel: c.gradeLabel, title: c.title, cup: c.cup,
+      distance: track.distances[CLASSES[c.classKey].distIndex], runners: seeded.map(({ dog }, i) => ({ trap: i + 1, dog })),
+      seed: rng.int(1, 1e9), result: null, trackId,
+    });
+  }
 
   for (const classKey of MEETING_PLAN) {
     const cls = CLASSES[classKey];
     // Your dogs only run if you've entered them; they get first call on a race.
-    const pool = ts.dogs.filter((d) => d.classKey === classKey && !used.has(d) && !(isMine(d) && !d.entered));
+    const pool = ts.dogs.filter((d) => d.classKey === classKey && !used.has(d) && !busy.has(d.id)
+      && !(isMine(d) && !d.entered));
     const rested = (d, rest) => day - d.lastRunDay >= rest;
     let field = null;
     for (const rest of [REST_DAYS, REST_DAYS - 1, 3]) {
@@ -211,7 +256,8 @@ export function getMeeting(world, trackId, day = world.day) {
     });
   }
   // Weakest races first, the best race of the night last.
-  const strength = (r) => (r.classKey === 'standard' ? r.grade : r.grade + 1.5);
+  const strength = (r) => (r.cup ? -1 - (r.cup.round === 'final' ? 5 : r.cup.round === 'semis' ? 3 : 0) - r.cup.index * 0.01
+    : r.classKey === 'standard' ? r.grade : r.grade + 1.5);
   races.sort((a, b) => strength(b) - strength(a));
   races.forEach((r, i) => {
     r.no = i + 1;
@@ -244,18 +290,36 @@ export function runRace(world, meeting, race, { keepFrames = false, sim = null }
   race.result = keepFrames ? sim : { ...sim, frames: undefined };
   recordForm(ts, meeting, race, sim);
   payPrizes(world, race, sim);
+  if (race.cup) {
+    const out = cupRaceRun(world, race, sim);
+    if (out?.finished) {
+      const winner = findDog(world, out.winnerId);
+      const cup = cupById(race.cup.key.split(':')[0]);
+      winner.trophies = [...(winner.trophies || []), `${cup.name} ${meeting.day}`];
+      if (isMine(winner)) world.trophies.push({ cup: cup.name, dog: winner.name, day: meeting.day });
+      addNews(world, `${winner.name} won the ${cup.name} at ${track.name}${isMine(winner) ? ' for you!' : '.'}`);
+    }
+  }
   ts.lastMeetingDay = Math.max(ts.lastMeetingDay, meeting.day);
   // Drop old cards (keeps memory small); form lives on the dogs.
   for (const d of Object.keys(ts.meetings)) if (+d < meeting.day - 1) delete ts.meetings[d];
   return sim;
 }
 
+export function addNews(world, text) {
+  world.news ||= [];
+  world.news.unshift({ day: world.day, text });
+  if (world.news.length > 60) world.news.length = 60;
+}
+
 function payPrizes(world, race, sim) {
-  const { places, runFee } = prizes(race.classKey, race.grade);
+  const { places, runFee } = race.cup
+    ? { places: race.cup.round === 'final' ? cupById(race.cup.key.split(':')[0]).prizes : [], runFee: 25 }
+    : prizes(race.classKey, race.grade);
   for (const r of sim.results) {
     if (!isMine(r.dog)) continue;
     const prize = places[r.position - 1] || 0;
-    addLedger(world, `${r.dog.name} ran ${ordinal(r.position)} in race ${race.no} (${race.gradeLabel}): ${prize ? `£${prize} prize and ` : ''}£${runFee} appearance fee`, runFee + prize);
+    addLedger(world, `${r.dog.name} ran ${ordinal(r.position)} in race ${race.no} (${race.title || race.gradeLabel}): ${prize ? `£${prize} prize and ` : ''}£${runFee} appearance fee`, runFee + prize);
     r.dog.earnings = (r.dog.earnings || 0) + runFee + prize;
   }
 }
@@ -347,7 +411,7 @@ function recordForm(ts, meeting, race, sim) {
   const list = (ts.standards[race.distance] ||= []);
   list.push(calcTime(winner.time, meeting.going));
   if (list.length > 40) list.shift();
-  regrade(res, race.classKey);
+  if (!race.cup) regrade(res, race.classKey);
 }
 
 /** Winners go up a grade; dogs beaten into 4th or worse twice running (once 5th or 6th) go down. */

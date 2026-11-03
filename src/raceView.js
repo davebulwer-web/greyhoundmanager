@@ -233,8 +233,9 @@ export class RaceView {
 
   /** 0 to 1 while a dog at distance d is in the air over a hurdle, otherwise null. */
   jumpPhase(d) {
+    const span = this.assets.sprites.hurdle?.jumpLength ?? TAKE_OFF;
     for (const h of this.race.hurdles || []) {
-      if (d >= h - TAKE_OFF && d <= h + TAKE_OFF) return (d - (h - TAKE_OFF)) / (2 * TAKE_OFF);
+      if (d >= h - span && d <= h + span) return (d - (h - span)) / (2 * span);
     }
     return null;
   }

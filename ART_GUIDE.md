@@ -60,13 +60,29 @@ rename the entry you want to `greyhound` (and its jacket entry to `jacket`).
 
 ## Hurdle races
 
-`hurdle.png` is drawn at each flight. Dogs rise `jumpHeight` pixels (in the
-manifest's `hurdle` entry) as they clear it, using their gallop frames. For
-proper jumping art, add `greyhoundJump` and `jacketJump` entries to the
-manifest's sprites, laid out like `greyhound` and `jacket` (one row per coat or
-trap, frames from take-off to landing), and the game uses them over hurdles.
-The Copilot prompts for both are in the project files
-(`art/copilot-hurdle-prompts.md`).
+The hurdles are **`hurdle_designer.png`**, made from Dave's Copilot hurdle
+(`assets/source/hurdle_designer.png`) by:
+
+    python3 tools/import_hurdle.py
+
+A flight of hurdles crosses the whole track, so the tool stacks one panel per
+lane, from the far side (top) down to the rail (bottom). `PANEL_HEIGHT` and
+`STEP` at the top of the tool set the panel size and spacing.
+
+While a dog is jumping a hurdle it uses **`greyhound_coats_jump.png`** and
+**`jackets_coats_jump.png`** (manifest entries `greyhoundJump` and `jacketJump`):
+8 frames from the last stride before take-off to the first stride after
+landing, played over `jumpLength` metres either side of the hurdle. They're made
+from Dave's jump sheet (`assets/source/greyhound_jump_designer.png`), which has a
+hurdle drawn under the dogs, so `--erase` blanks that box out first:
+
+    python3 tools/import_grey_greyhound.py assets/source/greyhound_jump_designer.png 8 --jump --erase 425,775,552,855
+
+For a new jump sheet, update `frames`, `frameWidth`, `frameHeight`, `anchorX`
+and `anchorY` in the manifest from what the tool prints. If the jump entries are removed, dogs use their gallop lifted
+`jumpHeight` pixels over each flight. The placeholder hurdle is `hurdle.png`
+(`hurdlePlaceholder` in the manifest). The Copilot prompts are in the project
+files (`art/copilot-hurdle-prompts.md`).
 
 ## Grandstand and advert boards (current art)
 

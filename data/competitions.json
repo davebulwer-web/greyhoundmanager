@@ -1,41 +1,17 @@
 {
-  "_readme": "The big competitions. Each one is held once a season (a season is 120 days) at its track: 24 dogs run in 4 heats, the first 3 in each heat go into 2 semi-finals, and the first 3 in each semi make the final. classKey is the kind of race: sprint, standard, middle, stay or hurdle (the track must stage it; marathons have too few dogs for a competition). dayInSeason is roughly when the heats are run (moved to the track's next racing night). entryFee is what you pay to enter a dog. prizes are for 1st to 6th in the final. Change names, fees and prizes freely; keep the quotes and commas.",
+  "_readme": "The big competitions. Each one is held once a season (a season is 120 days) at its track: 24 dogs run in 4 heats, the first 3 in each heat go into 2 semi-finals, and the first 3 in each semi make the final. classKey is the kind of race: sprint, standard, middle, stay or hurdle (the track must stage it; marathons have too few dogs for a competition). dayInSeason is roughly when the heats are run (moved to the track's next racing night). entryFee is what you pay to enter a dog. prizes are for 1st to 6th in the final. The names are the big real-life races at the tracks that host them today (without any sponsor's name). Change names, fees and prizes freely; keep the quotes and commas.",
   "cups": [
-    {
-      "id": "silverlead", "name": "Silver Lead", "trackId": "kestrel", "classKey": "standard",
-      "dayInSeason": 24, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]
-    },
-    {
-      "id": "sprintbowl", "name": "Marsh Sprint Bowl", "trackId": "marsh", "classKey": "sprint",
-      "dayInSeason": 46, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    },
-    {
-      "id": "longhaul", "name": "Ashby Long Haul", "trackId": "ashby", "classKey": "stay",
-      "dayInSeason": 70, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    },
-    {
-      "id": "lantern", "name": "Harbour Lantern", "trackId": "harbour", "classKey": "standard",
-      "dayInSeason": 94, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]
-    },
-    {
-      "id": "eastholmcrown", "name": "Eastholm Crown", "trackId": "eastholm", "classKey": "standard",
-      "dayInSeason": 10, "entryFee": 60, "prizes": [3000, 1000, 500, 350, 250, 150]
-    },
-    {
-      "id": "northgateplate", "name": "Northgate Plate", "trackId": "northgate", "classKey": "middle",
-      "dayInSeason": 34, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    },
-    {
-      "id": "foxleyhurdle", "name": "Foxley Hurdle Stakes", "trackId": "foxley", "classKey": "hurdle",
-      "dayInSeason": 58, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    },
-    {
-      "id": "westcombesprint", "name": "Westcombe Sprint Cup", "trackId": "westcombe", "classKey": "sprint",
-      "dayInSeason": 82, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    },
-    {
-      "id": "pennantstayers", "name": "Pennant Stayers Vase", "trackId": "pennant", "classKey": "stay",
-      "dayInSeason": 104, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]
-    }
+    {"id": "goldenjacket", "name": "Golden Jacket", "trackId": "monmore", "classKey": "stay", "dayInSeason": 6, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]},
+    {"id": "eastanglian", "name": "East Anglian Derby", "trackId": "yarmouth", "classKey": "standard", "dayInSeason": 14, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]},
+    {"id": "laurels", "name": "The Laurels", "trackId": "dunstallpark", "classKey": "standard", "dayInSeason": 22, "entryFee": 60, "prizes": [3000, 1000, 500, 350, 250, 150]},
+    {"id": "goldensprint", "name": "Golden Sprint", "trackId": "romford", "classKey": "sprint", "dayInSeason": 30, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]},
+    {"id": "steelcity", "name": "Steel City Cup", "trackId": "sheffield", "classKey": "standard", "dayInSeason": 38, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]},
+    {"id": "grandprix", "name": "Grand Prix", "trackId": "sunderland", "classKey": "stay", "dayInSeason": 46, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]},
+    {"id": "derby", "name": "English Greyhound Derby", "trackId": "towcester", "classKey": "standard", "dayInSeason": 56, "entryFee": 100, "prizes": [10000, 2500, 1200, 800, 600, 400]},
+    {"id": "championhurdle", "name": "Champion Hurdle", "trackId": "hove", "classKey": "hurdle", "dayInSeason": 66, "entryFee": 40, "prizes": [1500, 500, 300, 200, 150, 100]},
+    {"id": "eclipse", "name": "Eclipse", "trackId": "nottingham", "classKey": "middle", "dayInSeason": 74, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]},
+    {"id": "goldcollar", "name": "Gold Collar", "trackId": "hove", "classKey": "standard", "dayInSeason": 84, "entryFee": 60, "prizes": [3000, 1000, 500, 350, 250, 150]},
+    {"id": "kentderby", "name": "Kent Derby", "trackId": "centralpark", "classKey": "standard", "dayInSeason": 94, "entryFee": 50, "prizes": [2500, 800, 450, 300, 200, 150]},
+    {"id": "stleger", "name": "St Leger", "trackId": "dunstallpark", "classKey": "stay", "dayInSeason": 106, "entryFee": 60, "prizes": [3000, 1000, 500, 350, 250, 150]}
   ]
 }

@@ -3,6 +3,8 @@
 // serialize/deserialize have no DOM code; the storage helpers use localStorage.
 
 import { ensureCups, cupById } from './cups.js';
+import { TRACKS, trackById, raceDistance } from './track.js';
+import { CLASSES, isMine } from './world.js';
 
 const SAVE_KEY = 'greyhound-manager-save';
 const SAVE_VERSION = 1;
@@ -19,7 +21,7 @@ function packDog(dog, keepRuns = 12) {
 
 const KEEP_TRACK_DAYS = 14; // tracks you haven't been to for this long are left out of the save
 const KEEP_RECENT = 5;      // and at most this many other recently visited tracks are kept
-const OTHER_TRACK_RUNS = 8; // form lines kept for dogs at tracks other than your own
+const OTHER_TRACK_RUNS = 6; // form lines kept for dogs at tracks other than your own
 
 /**
  * Which tracks go in the save. With 16 tracks a save holding all of them
@@ -118,10 +120,56 @@ export function deserialize(text) {
   data.trophies ||= [];
   data.news ||= [];
   data.cups ||= [];
+  moveToRealTracks(data);
   ensureCups(data);
   delete data.saveVersion;
   delete data.savedAt;
   return data;
+}
+
+// Early versions of the game had made-up tracks. A save from then moves your
+// kennel to the real track most like your old one (same kinds of race).
+const OLD_TRACKS = {
+  kestrel: 'sheffield', marsh: 'romford', ashby: 'nottingham', harbour: 'hove',
+  ravensgate: 'doncaster', eastholm: 'hove', brackwater: 'oxford', millbrook: 'sheffield',
+  gullhaven: 'yarmouth', stonecross: 'doncaster', highmoor: 'newcastle', westcombe: 'hove',
+  foxley: 'harlow', furnace: 'kinsley', pennant: 'doncaster', northgate: 'nottingham',
+};
+
+function moveToRealTracks(data) {
+  const known = (id) => TRACKS.some((t) => t.id === id);
+  const p = data.player;
+  if (known(p.homeTrack)) return;
+  const oldId = p.homeTrack;
+  const newId = known(OLD_TRACKS[oldId]) ? OLD_TRACKS[oldId] : TRACKS[0].id;
+  const track = trackById(newId);
+  const fixRuns = (d) => {
+    for (const r of d?.runs || []) if (!known(r.trackId)) r.trackId = OLD_TRACKS[r.trackId] || newId;
+  };
+  const home = data.tracks[oldId];
+  for (const id of Object.keys(data.tracks)) if (!known(id)) delete data.tracks[id];
+  if (home) {
+    Object.assign(home, { trackId: newId, standards: {}, meetings: {}, lastMeetingDay: data.day - 1 });
+    home.dogs = home.dogs.filter((d) => {
+      d.homeTrack = newId;
+      fixRuns(d);
+      if (raceDistance(track, d.classKey)) return true;
+      if (!isMine(d)) return false;
+      // Your dog races in a kind of race the new track doesn't stage: it runs in ordinary races, from the bottom grade.
+      d.classKey = 'standard';
+      d.grade = CLASSES.standard.grades - 1;
+      return true;
+    });
+    data.tracks[newId] = home;
+  }
+  p.homeTrack = newId;
+  [...p.broods, ...p.studs, ...p.puppies.map((x) => x.dog)].forEach(fixRuns);
+  for (const l of p.litters) fixRuns(l.sire);
+  if (data.sales) {
+    data.sales.items = data.sales.items.filter((it) => it.kind === 'youngster' || home?.dogs.includes(it.dog));
+    data.sales.items.forEach((it) => { if (it.dog) { it.dog.homeTrack = newId; fixRuns(it.dog); } });
+  }
+  data.cups = data.cups.filter((c) => cupById(c.cupId));
 }
 
 // ---------------------------------------------------------------------------

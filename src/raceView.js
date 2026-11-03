@@ -2,7 +2,7 @@
 // side-on camera that follows the leaders. All art comes from the manifest.
 
 import { DT, FRAME_STRIDE, TAKE_OFF } from './sim.js';
-import { circumference } from './track.js';
+import { circumference, finishS, startS } from './track.js';
 
 export const PRE_START = 2.5; // seconds of hare running before the traps open
 
@@ -32,11 +32,12 @@ export class RaceView {
     this.sides = null;
   }
 
-  /** The grandstands for this track, in order. Competition races add the tournament stand. */
+  /** The grandstands for this track, in order. Competition races add the
+   * tournament stand (second, so the track's first stand keeps its place by the line). */
   pickStands(track, meetingRace) {
     const { stands = {}, cupStand } = this.assets;
     const names = [...(track?.stands || [])];
-    if (meetingRace?.cup && cupStand) names.unshift(cupStand);
+    if (meetingRace?.cup && cupStand) names.splice(1, 0, cupStand);
     const images = names.map((n) => stands[n]).filter(Boolean);
     return images.length ? images : null;
   }
@@ -240,7 +241,26 @@ export class RaceView {
     return null;
   }
 
-  /** A row of grandstands side by side, bottoms lined up, repeating along the track. */
+  /**
+   * How far (in pixels) a repeating background layer has scrolled. It is worked
+   * out from where the camera is round the track, with a whole number of repeats
+   * per lap, so every part of the course shows the same background on every lap
+   * (and in every race at that track). `phase` shifts the pattern: 0 means it
+   * starts at the left of the screen when the leader reaches the winning line.
+   */
+  layerOffset(scroll, period, phase = 0) {
+    const C = circumference(this.track);
+    const lapPx = C * this.view.pixelsPerMetre * scroll;
+    // Layers level with the track never run faster than it (that would look
+    // wrong against the rail); slower layers just round to the nearest repeat.
+    const n = Math.max(1, scroll >= 1 ? Math.floor(lapPx / period) : Math.round(lapPx / period));
+    const atLine = finishS(this.track) - 0.62 * this.viewMetres; // camera spot as the leader hits the line
+    const p = this.cam + startS(this.track, this.race.distance) - atLine;
+    return (mod(p, C) / C) * n * period + phase;
+  }
+
+  /** A row of grandstands side by side, bottoms lined up, repeating along the
+   * track. The first one (with the track's name board) is opposite the winning line. */
   drawStands(layer, images) {
     const { ctx, view } = this;
     const sky = this.assets.layers.find((l) => !l.repeat && l.y === 0);
@@ -251,7 +271,7 @@ export class RaceView {
       ctx.fillRect(0, top, view.width, bottom - top);
     }
     const period = images.reduce((a, img) => a + img.width, 0);
-    const offset = this.cam * view.pixelsPerMetre * layer.scroll;
+    const offset = this.layerOffset(layer.scroll, period, images[0].width / 2 - 0.62 * view.width);
     let x = -Math.round(mod(offset, period));
     for (let k = 0; x < view.width; k++) {
       const img = images[k % images.length];
@@ -272,7 +292,7 @@ export class RaceView {
       ctx.drawImage(img, 0, layer.y);
       return;
     }
-    const offset = this.cam * view.pixelsPerMetre * layer.scroll;
+    const offset = this.layerOffset(layer.scroll, img.width);
     const startX = -Math.round(mod(offset, img.width));
     for (let y = layer.y; y < layer.y + h; y += img.height) {
       const rowH = Math.min(img.height, layer.y + h - y);

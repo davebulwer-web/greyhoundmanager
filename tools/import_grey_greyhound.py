@@ -12,6 +12,7 @@ For the jump over a hurdle:
 
 --jump writes greyhound_coats_jump.png / jackets_coats_jump.png instead, and
 --pick keeps only those frames (counting from 1), in that order.
+--erase x0,y0,x1,y1 blanks out a box of the sheet first (e.g. a hurdle drawn under the dogs).
 
 It writes two sheets that line up frame for frame:
 
@@ -143,6 +144,11 @@ def main():
         i = args.index("--pick")
         pick = [int(v) - 1 for v in args[i + 1].split(",")]
         del args[i:i + 2]
+    erase = None
+    if "--erase" in args:
+        i = args.index("--erase")
+        erase = [int(v) for v in args[i + 1].split(",")]
+        del args[i:i + 2]
     if "--jump" in args:
         args.remove("--jump")
         OUT_DOGS = OUT_DOGS.replace("_run.png", "_jump.png")
@@ -152,6 +158,9 @@ def main():
     r, g, b = src[..., 0], src[..., 1], src[..., 2]
     background = (r - g > 60) & (b - g > 60)
     fg = ~background
+    if erase:
+        ex0, ey0, ex1, ey1 = erase
+        fg[ey0:ey1, ex0:ex1] = False
     fg[:, :4] = fg[:, -4:] = False
     fg[:4, :] = fg[-4:, :] = False
     expected = int(sys.argv[2]) if len(sys.argv) > 2 else None

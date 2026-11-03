@@ -39,9 +39,9 @@
     },
     "greyhoundJump": {
       "file": "sprites/greyhound_coats_jump.png",
-      "frameWidth": 71,
-      "frameHeight": 42,
-      "frames": 3,
+      "frameWidth": 69,
+      "frameHeight": 40,
+      "frames": 8,
       "rowsBy": "coat",
       "rows": [
         "black",
@@ -52,14 +52,14 @@
         "white-black"
       ],
       "anchorX": 35,
-      "anchorY": 38,
-      "notes": "Used while a dog is in the air over a hurdle: frames from take-off to landing. Made from frames 3-5 of Dave's Copilot sheet (assets/source/greyhound_jump_designer.png) by: python3 tools/import_grey_greyhound.py assets/source/greyhound_jump_designer.png 8 --jump --pick 3,4,5. Remove this entry and the next to go back to the gallop lifted over the hurdle."
+      "anchorY": 37,
+      "notes": "Used while a dog is jumping a hurdle: 8 frames from the last stride before take-off to the first stride after landing. Made from Dave's Copilot jump sheet (assets/source/greyhound_jump_designer.png) by: python3 tools/import_grey_greyhound.py assets/source/greyhound_jump_designer.png 8 --jump --erase 425,775,552,855 (the --erase box blanks out the hurdle drawn in the sheet). Remove this entry and the next to go back to the gallop lifted over the hurdle."
     },
     "jacketJump": {
       "file": "sprites/jackets_coats_jump.png",
-      "frameWidth": 71,
-      "frameHeight": 42,
-      "frames": 3,
+      "frameWidth": 69,
+      "frameHeight": 40,
+      "frames": 8,
       "rows": [
         "trap1",
         "trap2",
@@ -69,7 +69,7 @@
         "trap6"
       ],
       "anchorX": 35,
-      "anchorY": 38,
+      "anchorY": 37,
       "notes": "Jackets for the jump frames, made by the same tool so they line up exactly."
     },
     "greyhoundPainted": {
@@ -151,7 +151,8 @@
       "anchorX": 12,
       "bottom": 220,
       "jumpHeight": 8,
-      "notes": "Dave's Copilot hurdle, made by tools/import_hurdle.py: one panel per lane from the far side (top) to the rail (bottom). anchorX is the pixel that sits on the hurdle's position; 'bottom' is the screen line its bottom edge stands on; jumpHeight is how many pixels a dog rises as it clears it. The placeholder is 'hurdlePlaceholder' below."
+      "notes": "Dave's Copilot hurdle, made by tools/import_hurdle.py: one panel per lane from the far side (top) to the rail (bottom). anchorX is the pixel that sits on the hurdle's position; 'bottom' is the screen line its bottom edge stands on; jumpHeight is how many pixels a dog rises as it clears it, and jumpLength how many metres before (and after) the hurdle the jump frames start (and end). The placeholder is 'hurdlePlaceholder' below.",
+      "jumpLength": 2.6
     },
     "hurdlePlaceholder": {
       "file": "sprites/hurdle.png",

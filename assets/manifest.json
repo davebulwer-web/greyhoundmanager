@@ -126,7 +126,10 @@
         "y": 24,
         "scroll": 0.45,
         "repeat": true,
-        "notes": "Dave's Copilot grandstand, made by tools/import_background.py. The placeholder is sprites/stand.png (y 26)."
+        "stand": true,
+        "bottom": 88,
+        "fill": "#56608c",
+        "notes": "The grandstands. Each track picks its stands from 'stands' below (see 'stands' in data/tracks.json); this file is only used for a track that doesn't name any. Stands are drawn side by side with their bottom edge at 'bottom', and 'fill' is painted behind them from the bottom of the sky down. The placeholder is sprites/stand.png (y 26)."
       },
       {
         "file": "sprites/hoardings_designer.png",
@@ -162,7 +165,32 @@
         "repeat": true,
         "front": true
       }
-    ]
+    ],
+    "stands": {
+      "_notes": "Made from Dave's sheet (assets/source/stands_sheet_designer.png) by tools/import_background.py. Any size works: each stand is drawn with its bottom edge on the stand layer's 'bottom'. Keep them under about 88 pixels tall so they fit under the top of the screen.",
+      "standard_a": {
+        "file": "sprites/stand_standard_a.png"
+      },
+      "standard_b": {
+        "file": "sprites/stand_standard_b.png"
+      },
+      "heritage": {
+        "file": "sprites/stand_heritage.png"
+      },
+      "premium": {
+        "file": "sprites/stand_premium.png"
+      },
+      "terrace": {
+        "file": "sprites/stand_terrace.png"
+      },
+      "pavilion": {
+        "file": "sprites/stand_pavilion.png"
+      },
+      "tournament": {
+        "file": "sprites/stand_tournament.png"
+      }
+    },
+    "cupStand": "tournament"
   },
   "raceView": {
     "width": 640,

@@ -247,7 +247,7 @@ function goLive(race) {
   state.commentary = buildCommentary(state.liveSim);
   state.t = -PRE_START;
   state.mode = 'pre';
-  state.raceView.setRace(state.liveSim, track);
+  state.raceView.setRace(state.liveSim, track, race);
   state.map.setRace(state.liveSim, track);
   $('meeting').textContent = `Race ${race.no} · ${race.time}`;
   $('race-info').textContent = `${race.distance}m · ${race.title || `Grade ${race.gradeLabel}`}`;
@@ -469,7 +469,7 @@ function replay(race) {
   state.live = race;
   state.liveSim = simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
   state.commentary = buildCommentary(state.liveSim);
-  state.raceView.setRace(state.liveSim, track);
+  state.raceView.setRace(state.liveSim, track, race);
   state.map.setRace(state.liveSim, track);
   $('meeting').textContent = `Replay · Race ${race.no} · ${race.time}`;
   $('race-info').textContent = `${race.distance}m · Grade ${race.gradeLabel}`;
@@ -906,7 +906,7 @@ async function boot() {
     state.t = state.raceView.endTime - 0.01;
   });
   $('btn-replay').addEventListener('click', () => {
-    state.raceView.setRace(state.liveSim, state.track);
+    state.raceView.setRace(state.liveSim, state.track, state.live);
     state.t = -PRE_START;
     state.mode = 'running';
     $('banner').classList.add('hidden');

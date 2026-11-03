@@ -20,14 +20,25 @@ export class RaceView {
     this.viewMetres = this.view.width / this.view.pixelsPerMetre;
   }
 
-  setRace(race, track) {
+  /** meetingRace (optional) is the race on the card, used to spot competition nights. */
+  setRace(race, track, meetingRace) {
     this.race = race;
     this.track = track;
+    this.standImages = this.pickStands(track, meetingRace);
     this.cam = this.startCam();
     this.anim = race.runners.map((_, i) => (i * 3) % 8);
     this.lastT = -PRE_START;
     this.dispY = null;
     this.sides = null;
+  }
+
+  /** The grandstands for this track, in order. Competition races add the tournament stand. */
+  pickStands(track, meetingRace) {
+    const { stands = {}, cupStand } = this.assets;
+    const names = [...(track?.stands || [])];
+    if (meetingRace?.cup && cupStand) names.unshift(cupStand);
+    const images = names.map((n) => stands[n]).filter(Boolean);
+    return images.length ? images : null;
   }
 
   startCam() {
@@ -204,8 +215,32 @@ export class RaceView {
     return states;
   }
 
+  /** A row of grandstands side by side, bottoms lined up, repeating along the track. */
+  drawStands(layer, images) {
+    const { ctx, view } = this;
+    const sky = this.assets.layers.find((l) => !l.repeat && l.y === 0);
+    const bottom = layer.bottom ?? layer.y + layer.image.height;
+    if (layer.fill) {
+      const top = sky ? sky.y + sky.image.height : layer.y;
+      ctx.fillStyle = layer.fill;
+      ctx.fillRect(0, top, view.width, bottom - top);
+    }
+    const period = images.reduce((a, img) => a + img.width, 0);
+    const offset = this.cam * view.pixelsPerMetre * layer.scroll;
+    let x = -Math.round(mod(offset, period));
+    for (let k = 0; x < view.width; k++) {
+      const img = images[k % images.length];
+      if (x + img.width > 0) ctx.drawImage(img, x, bottom - img.height);
+      x += img.width;
+    }
+  }
+
   drawLayer(layer) {
     const { ctx, view } = this;
+    if (layer.stand && this.standImages) {
+      this.drawStands(layer, this.standImages);
+      return;
+    }
     const img = layer.image;
     const h = layer.height || img.height;
     if (!layer.repeat) {

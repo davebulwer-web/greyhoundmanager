@@ -7,7 +7,11 @@ Reads   assets/source/grandstand_designer.png  (one stand on a white background)
 Writes  assets/sprites/stand_designer.png      (STAND_HEIGHT pixels tall, transparent sky)
         assets/sprites/hoardings_designer.png  (one long strip of boards, BOARD_HEIGHT tall)
 
+        assets/source/stands_sheet_designer.png (Dave's sheet of eight stands on black)
+        assets/sprites/stand_<name>.png  (one per stand in STANDS, bottom edge = trackside)
+
 Boards listed in SKIP are left out (they use real company names).
+The corner stand (number 7 on the sheet) is left out: it's drawn at an angle.
 """
 import sys
 from pathlib import Path
@@ -26,6 +30,23 @@ COLS = [(2, 385), (388, 767), (770, 1155), (1158, 1533)]
 ROWS = [(85, 170), (200, 288), (319, 407), (439, 532), (565, 656), (688, 781), (811, 903)]
 # (row, column) of boards to leave out, counting from 0. These name real companies.
 SKIP = {(1, 1), (1, 2), (2, 3), (4, 3)}  # Kennel Club, Freedom Leisure, Ladbrokes, Racing Post
+
+
+# Stands on the sheet: name -> (left, top, right, bottom) box in source pixels,
+# drawn tight above each stand's label so the label is left out.
+STANDS = {
+    'standard_a': (15, 10, 780, 207),
+    'standard_b': (825, 10, 1515, 207),
+    'heritage': (15, 262, 740, 505),
+    'premium': (772, 243, 1530, 513),
+    'terrace': (10, 560, 770, 740),
+    'pavilion': (798, 560, 1530, 748),
+    'tournament': (800, 780, 1490, 972),
+}
+STAND_SCALE = 0.33     # every stand is shrunk by the same amount, so big stands look big
+STAND_MAX_HEIGHT = 84  # ...unless it would be taller than this
+DARK = 45              # sheet pixels darker than this (R+G+B) that touch the edge are background
+PURE_BLACK = 12        # and pixels this dark are background wherever they are (gaps in railings)
 
 
 def background_mask(rgb, tol=40):
@@ -54,6 +75,43 @@ def make_stand():
     out.putalpha(alpha)
     out.save(OUT / 'stand_designer.png')
     print('stand_designer.png', out.size)
+
+
+def edge_flood(dark):
+    """Dark pixels joined to the edge of the box (the night sky around a stand)."""
+    reached = np.zeros_like(dark)
+    reached[0, :], reached[-1, :], reached[:, 0], reached[:, -1] = dark[0, :], dark[-1, :], dark[:, 0], dark[:, -1]
+    while True:
+        grown = reached.copy()
+        grown[1:] |= reached[:-1]
+        grown[:-1] |= reached[1:]
+        grown[:, 1:] |= reached[:, :-1]
+        grown[:, :-1] |= reached[:, 1:]
+        grown &= dark
+        if (grown == reached).all():
+            return reached
+        reached = grown
+
+
+def make_stands():
+    sheet = np.array(Image.open(SRC / 'stands_sheet_designer.png').convert('RGB'))
+    for name, (x0, y0, x1, y1) in STANDS.items():
+        rgb = sheet[y0:y1, x0:x1]
+        level = rgb.astype(int).sum(2)
+        bg = edge_flood(level <= DARK) | (level <= PURE_BLACK)
+        ys, xs = np.where(~bg)
+        rgb = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1].copy()
+        mask = ~bg[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+        h = min(STAND_MAX_HEIGHT, round(rgb.shape[0] * STAND_SCALE))
+        w = round(rgb.shape[1] * h / rgb.shape[0])
+        rgb[~mask] = (20, 22, 32)
+        small = Image.fromarray(rgb).resize((w, h), Image.LANCZOS)
+        alpha = Image.fromarray((mask * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS)
+        alpha = alpha.point(lambda v: 255 if v >= 128 else 0)
+        out = small.convert('RGBA')
+        out.putalpha(alpha)
+        out.save(OUT / f'stand_{name}.png')
+        print(f'stand_{name}.png', out.size)
 
 
 def make_hoardings():
@@ -85,4 +143,5 @@ def make_hoardings():
 if __name__ == '__main__':
     make_stand()
     make_hoardings()
+    make_stands()
     sys.exit(0)

@@ -1,28 +1,32 @@
 {
-  "_readme": "The tracks. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = race distances in metres, shortest first: [sprint, standard, stayers, marathon]. goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
+  "_readme": "The tracks. Every track is an oval: two straights joined by two half-circle bends, run anticlockwise. straight = length of each straight in metres. radius = radius of the bends in metres (smaller is tighter). finishBeforeBend = how far the finish line is before bend 1. distances = race distances in metres, shortest first: [sprint, standard, stayers, marathon]. goingBase = how slow the sand usually rides (0 is normal, + is slower, - is faster; a day's going is this plus a random amount). stands = the grandstands along the home straight, in order, repeated along the track (names from \"stands\" in assets/manifest.json: standard_a, standard_b, heritage, premium, terrace, pavilion, tournament). On competition nights the tournament stand is added too. Add a track by copying a whole { ... } block. The id must be unique and have no spaces.",
   "tracks": [
     {
       "id": "kestrel", "name": "Kestrel Park",
       "straight": 88, "radius": 36, "finishBeforeBend": 12,
       "distances": [270, 460, 500, 640], "goingBase": 0,
+      "stands": ["standard_a", "standard_b"],
       "description": "A galloping, fair track with long straights."
     },
     {
       "id": "marsh", "name": "Marsh Lane",
       "straight": 70, "radius": 33, "finishBeforeBend": 9,
       "distances": [250, 400, 465, 600], "goingBase": -5,
+      "stands": ["terrace"],
       "description": "Tight bends that suit sharp railers."
     },
     {
       "id": "ashby", "name": "Ashby Vale",
       "straight": 95, "radius": 39, "finishBeforeBend": 14,
       "distances": [290, 480, 525, 690], "goingBase": 0,
+      "stands": ["heritage"],
       "description": "Big, wide and stamina sapping."
     },
     {
       "id": "harbour", "name": "Harbour Road",
       "straight": 80, "radius": 35, "finishBeforeBend": 10,
       "distances": [265, 450, 515, 630], "goingBase": 10,
+      "stands": ["pavilion", "premium"],
       "description": "A sandy, slightly slow surface."
     }
   ]

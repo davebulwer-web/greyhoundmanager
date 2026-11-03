@@ -122,16 +122,18 @@
         "repeat": false
       },
       {
-        "file": "sprites/stand.png",
-        "y": 26,
+        "file": "sprites/stand_designer.png",
+        "y": 24,
         "scroll": 0.45,
-        "repeat": true
+        "repeat": true,
+        "notes": "Dave's Copilot grandstand, made by tools/import_background.py. The placeholder is sprites/stand.png (y 26)."
       },
       {
-        "file": "sprites/hoardings.png",
-        "y": 88,
+        "file": "sprites/hoardings_designer.png",
+        "y": 84,
         "scroll": 1,
-        "repeat": true
+        "repeat": true,
+        "notes": "Dave's Copilot advert boards in one strip, made by tools/import_background.py. The placeholder is sprites/hoardings.png (y 88)."
       },
       {
         "file": "sprites/rail_far.png",

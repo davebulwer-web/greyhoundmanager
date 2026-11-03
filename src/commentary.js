@@ -47,6 +47,19 @@ export function buildCommentary(sim) {
     lastLeader = a.i;
   }
 
+  // A late run: the winner wasn't in front turning for home.
+  const winner = sim.results[0];
+  const wi = sim.runners.findIndex((r) => r.trap === winner.trap);
+  if (wi !== lastLeader) {
+    for (let k = frameAtLeaderD(sim.distance - 100); k < sim.frames.length; k++) {
+      if (leaderAt(sim, k)[0].i !== wi) continue;
+      say(k * DT, winner.bendPositions[0] >= 4
+        ? `And here comes ${winner.dog.name}, flying home from the back!`
+        : `${winner.dog.name} finishes strongest and gets up to lead!`);
+      break;
+    }
+  }
+
   // Trouble in running (at most two moments, a second apart).
   const trouble = sim.results
     .flatMap((r) => (r.events || []).map((e) => ({ ...e, r })))

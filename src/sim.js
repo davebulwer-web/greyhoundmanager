@@ -42,7 +42,19 @@ export const TUNING = {
   hurdleMistake: 0.01,   // chance of hitting a hurdle for the best jumper...
   hurdleMistakeRange: 0.08, // ...plus this much more for a jumping-0 dog
   hurdleMistakeLoss: [1.5, 3.5], // extra m/s lost when it hits one
+  paceShape: 0.03,       // how much a dog's running style shifts its speed between the start and the finish
+  surgeSize: 0.008,      // in-running ups and downs: a dog finds or loses this fraction of speed for a second or two
+  surgeTime: 1.5,        // seconds those ups and downs last
 };
+
+/**
+ * A dog's running style from its abilities: -1 is all early pace (flies out,
+ * then tires), +1 is a strong finisher (slow away, then runs on late).
+ */
+export function finishingStyle(stats) {
+  const early = (stats.earlyPace + stats.breakSpeed) / 2;
+  return clamp((stats.stamina - early) / 50, -1, 1);
+}
 export const TAKE_OFF = 1.6; // metres before a hurdle that a dog takes off (and lands after it)
 
 /** A tired dog (low fitness, 0-100) is slightly slower. Dogs without a fitness value are fully fit. */
@@ -91,6 +103,8 @@ function prepareRunner(rng, runner, track, going) {
     bendCap: TUNING.bendCapBase + (s.cornering / 100) * TUNING.bendCapRange - tightness,
     drift: (1 - s.cornering / 100) * TUNING.driftOut,
     preferredLane,
+    finishStyle: finishingStyle(s),
+    surge: 0,
     sidestepLane: null,
     sidestepUntil: 0,
     finished: false,
@@ -186,6 +200,13 @@ export function simulateRace({ track, distance, runners, seed, going = 0, hurdle
 
       // ---- Target speed --------------------------------------------------
       let target = r.vmax * (1 - TUNING.fadePer100m * Math.max(0, r.d - r.staminaDist) / 100);
+      // Running style: early-pace dogs are quicker in the first part of the race and slower
+      // at the end; strong finishers are the other way round.
+      const phase = clamp((r.d / distance - 0.5) * 2.5, -1, 1);
+      // In-running ups and downs, so dogs that are close together swap places.
+      r.surge += -r.surge / TUNING.surgeTime * DT
+        + TUNING.surgeSize * Math.sqrt(2 * DT / TUNING.surgeTime) * rng.normal();
+      target *= 1 + TUNING.paceShape * r.finishStyle * phase + r.surge;
       if (onBend) target *= Math.min(1, r.bendCap + r.lane * TUNING.wideBendBonus);
 
       if (r.v < target) r.v += r.accel * (1 - (r.v / target) ** 3) * DT;

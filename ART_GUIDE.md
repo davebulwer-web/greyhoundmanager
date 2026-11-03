@@ -191,3 +191,12 @@ LibreSprite are all good) and export as PNG.
     python3 tools/make_placeholder_art.py
 
 This overwrites the files in `assets/sprites/`, so keep a copy of your own art first.
+
+## Sounds
+
+The race sounds (a bell as the hare starts, the traps opening, the hare's
+whirr, and a crowd that builds up to a roar at the line) are made in code by
+`src/sound.js`, so there are no sound files to swap. The loudness of each is a
+number at the top of that file. Players can turn sound off with the
+**Sound** button under the race, and the **Close-up** button zooms in on the
+leaders while the dogs are running (by `CLOSE_UP` in `src/raceView.js`).

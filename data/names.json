@@ -1,5 +1,6 @@
 {
-  "_readme": "Words used to make greyhound names: one word from firstWords, then one from secondWords. Dogs bred by the same kennel share a first word (like a family name), so litter mates come out as e.g. 'Tinker's Comet' and 'Tinker's Echo'. Add, remove or change any words. Keep the quotes and commas. Trainer names are made the same way from trainerFirstNames and trainerSurnames.",
+  "_readme": "Words used to make greyhound names: one word from firstWords, then one from secondWords. Dogs bred by the same kennel share a first word (like a family name), so litter mates come out as e.g. 'Tinker's Comet' and 'Tinker's Echo'. Add, remove or change any words. Keep the quotes and commas. Trainer names are made the same way from trainerFirstNames and trainerSurnames. maxNameLength is the longest a dog's name can be, counting the space (16 in real British racing): a second word is only chosen if it fits, and a first word too long to go with any second word isn't used.",
+  "maxNameLength": 16,
   "firstWords": [
     "Tinker's", "Sleepy", "Mustard", "Gorse", "Puddle's", "Copper", "Midnight", "Velvet", "Rusty", "Misty",
     "Pepper", "Shady", "Hollow", "Golden", "Quiet", "Northern", "Crafty", "Willow", "Smokey", "Dusty",

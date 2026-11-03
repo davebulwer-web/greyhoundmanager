@@ -8,6 +8,7 @@ import { STYLES } from './dogs.js';
 import { TRACKS, trackById, raceDistance } from './track.js';
 import { simulateRace, DOG_LENGTH_M } from './sim.js';
 import { RaceView, PRE_START } from './raceView.js';
+import { raceSound, raceSoundEnd, unlockSound, setMuted } from './sound.js';
 import { MiniMap } from './minimap.js';
 import {
   createWorld, todaysMeeting, tracksRacingOn, runRace, nextRace, formatDay, formatShortDate,
@@ -251,6 +252,7 @@ function goLive(race) {
   state.commentary = buildCommentary(state.liveSim);
   state.t = -PRE_START;
   state.mode = 'pre';
+  raceSoundEnd();
   state.raceView.setRace(state.liveSim, track, race);
   state.map.setRace(state.liveSim, track);
   $('meeting').textContent = `Race ${race.no} · ${race.time}`;
@@ -288,6 +290,7 @@ function startRace() {
 function finishRace() {
   const race = state.live;
   state.mode = 'done';
+  raceSoundEnd();
   if (!race.result) {
     runRace(state.world, state.meeting, race, { sim: state.liveSim });
     settleRace(state.world, race);
@@ -317,7 +320,8 @@ function meetingOver() {
 
 function render(snap = false) {
   const race = state.liveSim;
-  const states = state.raceView.draw(state.t, { snap });
+  const states = state.raceView.draw(state.t, { snap, closeUp: state.closeUp });
+  if (state.mode === 'running') raceSound(state.t, Math.max(...states.map((s) => s.d)), race.distance);
   state.map.draw(states);
   $('clock').textContent = Math.max(0, state.t).toFixed(2);
 
@@ -912,13 +916,14 @@ async function boot() {
   state.map = new MiniMap($('map'));
   state.newTrack = TRACKS[0].id;
 
-  $('btn-start').addEventListener('click', startRace);
+  $('btn-start').addEventListener('click', () => { unlockSound(); startRace(); });
   $('btn-skip').addEventListener('click', () => {
     if (state.mode === 'done' || !state.live) return;
     if (state.mode === 'pre') startRace();
     state.t = state.raceView.endTime - 0.01;
   });
   $('btn-replay').addEventListener('click', () => {
+    unlockSound();
     state.raceView.setRace(state.liveSim, state.track, state.live);
     state.t = -PRE_START;
     state.mode = 'running';
@@ -935,6 +940,26 @@ async function boot() {
     else el.requestFullscreen?.();
   });
   document.querySelectorAll('#nav [data-screen]').forEach((b) => b.addEventListener('click', () => go(b.dataset.screen)));
+  let soundOn = true;
+  try { soundOn = localStorage.getItem('gm-sound') !== 'off'; } catch { /* default on */ }
+  const soundBtn = $('btn-sound');
+  const showSound = () => { setMuted(!soundOn); soundBtn.classList.toggle('on', soundOn); soundBtn.textContent = soundOn ? 'Sound: on' : 'Sound: off'; };
+  showSound();
+  soundBtn.addEventListener('click', () => {
+    soundOn = !soundOn;
+    unlockSound();
+    try { localStorage.setItem('gm-sound', soundOn ? 'on' : 'off'); } catch { /* not saved */ }
+    showSound();
+  });
+  try { state.closeUp = localStorage.getItem('gm-closeup') !== 'off'; } catch { state.closeUp = true; }
+  const closeBtn = $('btn-closeup');
+  const showClose = () => { closeBtn.classList.toggle('on', state.closeUp); closeBtn.textContent = state.closeUp ? 'Close-up: on' : 'Close-up: off'; };
+  showClose();
+  closeBtn.addEventListener('click', () => {
+    state.closeUp = !state.closeUp;
+    try { localStorage.setItem('gm-closeup', state.closeUp ? 'on' : 'off'); } catch { /* not saved */ }
+    showClose();
+  });
   document.querySelectorAll('.speed button').forEach((b) => b.addEventListener('click', () => {
     state.speed = +b.dataset.speed;
     document.querySelectorAll('.speed button').forEach((o) => o.classList.toggle('on', o === b));

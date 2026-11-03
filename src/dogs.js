@@ -11,25 +11,46 @@ export const STYLES = {
 };
 
 // Name words come from data/names.json (loaded by src/data.js).
-let NAMES = { firstWords: ['Unnamed'], secondWords: ['Dog'], trainerFirstNames: ['A.'], trainerSurnames: ['Trainer'] };
+let NAMES = { firstWords: ['Unnamed'], secondWords: ['Dog'], trainerFirstNames: ['A.'], trainerSurnames: ['Trainer'], maxNameLength: 16 };
+let usable = null; // first words worked out from NAMES (cleared when the names change)
 export function setNames(names) {
   NAMES = { ...NAMES, ...names };
+  usable = null;
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+/** Second words that keep the whole name within maxNameLength (16, as in real
+ * British racing). If none fit, the shortest few are used anyway. */
+function secondWordsFor(first) {
+  const max = NAMES.maxNameLength || 99;
+  const fit = NAMES.secondWords.filter((w) => first.length + 1 + w.length <= max);
+  return fit.length ? fit : [...NAMES.secondWords].sort((a, b) => a.length - b.length).slice(0, 5);
+}
+
+/** First words with enough second words to go with them. */
+function usableFirstWords() {
+  if (usable) return usable;
+  const ok = NAMES.firstWords.filter((w) => secondWordsFor(w).length >= 3
+    && w.length + 1 + Math.min(...NAMES.secondWords.map((x) => x.length)) <= (NAMES.maxNameLength || 99));
+  usable = ok.length ? ok : NAMES.firstWords;
+  return usable;
+}
+
 /** A kennel's first word, shared by every dog it breeds. */
 export function pickFirstWord(rng) {
-  return rng.pick(NAMES.firstWords);
+  return rng.pick(usableFirstWords());
 }
 
 /** A dog name. Pass `first` to keep a kennel's first word (litter mates). */
 export function makeDogName(rng, taken = new Set(), first = null) {
   for (let i = 0; i < 60; i++) {
-    const name = `${first || rng.pick(NAMES.firstWords)} ${rng.pick(NAMES.secondWords)}`;
+    const f = first || rng.pick(usableFirstWords());
+    const name = `${f} ${rng.pick(secondWordsFor(f))}`;
     if (!taken.has(name)) { taken.add(name); return name; }
   }
-  const name = `${first || rng.pick(NAMES.firstWords)} ${rng.pick(NAMES.secondWords)} ${rng.int(2, 99)}`;
+  const f = first || rng.pick(usableFirstWords());
+  const name = `${f} ${rng.pick(secondWordsFor(f))} ${rng.int(2, 99)}`;
   taken.add(name);
   return name;
 }

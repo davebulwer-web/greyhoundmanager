@@ -5,19 +5,27 @@ import { DT, FRAME_STRIDE, TAKE_OFF } from './sim.js';
 import { circumference, finishS, startS } from './track.js';
 
 export const PRE_START = 2.5; // seconds of hare running before the traps open
+export const CLOSE_UP = 1.5;  // how far the close-up camera zooms in while the dogs are running
+const OUT_SCALE = 3;          // the on-screen canvas is this many times the size of the scene
 
 const mod = (a, n) => ((a % n) + n) % n;
 
 export class RaceView {
   constructor(canvas, assets) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
     this.assets = assets;
     this.view = assets.view;
-    canvas.width = this.view.width;
-    canvas.height = this.view.height;
+    // The scene is drawn at its own size (640 x 240) on a hidden canvas, then
+    // copied (zoomed in when close-up is on) onto the bigger canvas on screen.
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = this.view.width;
+    this.canvas.height = this.view.height;
+    this.ctx = this.canvas.getContext('2d');
+    this.out = canvas.getContext('2d');
+    canvas.width = this.view.width * OUT_SCALE;
+    canvas.height = this.view.height * OUT_SCALE;
+    this.out.imageSmoothingEnabled = false;
     this.viewMetres = this.view.width / this.view.pixelsPerMetre;
+    this.zoom = 1;
   }
 
   /** meetingRace (optional) is the race on the card, used to spot competition nights. */
@@ -27,6 +35,7 @@ export class RaceView {
     this.standImages = this.pickStands(track, meetingRace);
     this.cam = this.startCam();
     this.anim = race.runners.map((_, i) => (i * 3) % 8);
+    this.zoom = 1;
     this.lastT = -PRE_START;
     this.dispY = null;
     this.sides = null;
@@ -229,7 +238,30 @@ export class RaceView {
     }
 
     this.lastT = t;
+    this.present(t, leaderD, simStep, opts);
     return states;
+  }
+
+  /**
+   * Copy the scene onto the screen. With close-up on, the camera eases in
+   * once the traps open (keeping the track and the advert boards in view, with
+   * the leader near the right) and eases back out when the race is over, so
+   * the stands are seen in the parade and at the finish.
+   */
+  present(t, leaderD, simStep, opts) {
+    const { view } = this;
+    const running = t > 0.3 && leaderD < this.race.distance + 8;
+    const target = opts.closeUp && running ? CLOSE_UP : 1;
+    if (opts.snap || simStep > 1) this.zoom = target;
+    else this.zoom += (target - this.zoom) * Math.min(1, simStep * 2.5);
+    const cw = view.width / this.zoom;
+    const ch = view.height / this.zoom;
+    const leaderX = (leaderD - this.cam) * view.pixelsPerMetre;
+    const cx = Math.max(0, Math.min(view.width - cw, leaderX + 70 - cw));
+    const cy = view.height - ch; // keep the bottom of the scene (the track)
+    const out = this.out;
+    out.imageSmoothingEnabled = false;
+    out.drawImage(this.canvas, cx, cy, cw, ch, 0, 0, out.canvas.width, out.canvas.height);
   }
 
   /** 0 to 1 while a dog at distance d is in the air over a hurdle, otherwise null. */

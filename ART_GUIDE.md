@@ -199,4 +199,5 @@ whirr, and a crowd that builds up to a roar at the line) are made in code by
 `src/sound.js`, so there are no sound files to swap. The loudness of each is a
 number at the top of that file. Players can turn sound off with the
 **Sound** button under the race, and the **Close-up** button zooms in on the
-leaders while the dogs are running (by `CLOSE_UP` in `src/raceView.js`).
+leaders for the run to the line: the last 150 metres (`CLOSE_UP_FROM`), by
+1.5 times (`CLOSE_UP`), both in `src/raceView.js`.

@@ -1,26 +1,36 @@
 // The racing world: every track has its own pool of greyhounds and trainers,
-// races twice a week-ish (every other day), and keeps each dog's form.
+// races on its own nights of the week, and keeps each dog's form.
 // When you visit a track, any meetings it held since your last visit are run
 // in the background first, so form is always up to date.
 // No DOM code here: it runs in Node too (see tools/worldtest.mjs).
 
 import { makeRng } from './rng.js';
 import { makeDog, pickFirstWord, makeTrainerName, overallRating } from './dogs.js';
-import { TRACKS, trackById } from './track.js';
+import { TRACKS, trackById, racesOn, raceDistance, WEEKDAYS } from './track.js';
 import { simulateRace, TUNING, SECONDS_PER_LENGTH, formatMargin } from './sim.js';
 import { priceRace } from './market.js';
 import { settleBet, betCost, describeBet } from './betting.js';
 import { ensureCups, cupRacesFor, cupRaceRun, cupById, CUPS } from './cups.js';
 
-/** Race classes: sprint (D grades), standard (A grades), stayers (S grades). */
+// The kinds of race, with their grades as in British racing: A (standard
+// distance), B (a longer standard trip), D (sprints), S (stayers), M (marathons)
+// and H (hurdles). Grade 1 is the best. perGrade = dogs per grade at a track.
+// level/step say how good grade 1 is and how fast the grades drop away,
+// counted in A grades (used for prize money and dog values).
 export const CLASSES = {
-  sprint: { prefix: 'D', grades: 3, perGrade: 9, distIndex: 0 },
-  standard: { prefix: 'A', grades: 8, perGrade: 20, distIndex: 1 },
-  stay: { prefix: 'S', grades: 3, perGrade: 9, distIndex: 2 },
+  standard: { prefix: 'A', grades: 11, perGrade: 10, level: 0, step: 1, name: 'standard', plural: 'standard-distance dogs' },
+  middle: { prefix: 'B', grades: 6, perGrade: 4, level: 1, step: 1.5, name: 'middle distance', plural: 'middle-distance dogs' },
+  sprint: { prefix: 'D', grades: 4, perGrade: 5, level: 2, step: 2, name: 'sprint', plural: 'sprinters' },
+  stay: { prefix: 'S', grades: 6, perGrade: 4, level: 1, step: 1.5, name: 'stayers', plural: 'stayers' },
+  marathon: { prefix: 'M', grades: 2, perGrade: 6, level: 1, step: 3, name: 'marathon', plural: 'marathon dogs' },
+  hurdle: { prefix: 'H', grades: 4, perGrade: 6, level: 2, step: 2, name: 'hurdles', plural: 'hurdlers' },
 };
-const MEETING_PLAN = ['standard', 'standard', 'standard', 'sprint', 'standard', 'standard', 'standard', 'stay', 'standard', 'standard'];
+export const CLASS_KEYS = Object.keys(CLASSES);
+// A night's card, in order. Kinds a track doesn't stage become standard races.
+const MEETING_PLAN = ['standard', 'standard', 'sprint', 'standard', 'middle', 'standard', 'hurdle', 'standard', 'stay', 'standard', 'marathon'];
 export const REST_DAYS = 5;     // a dog needs this many days between races
-export const HISTORY_DAYS = 36; // days of racing run before the game starts
+export const HISTORY_DAYS = 36; // the game starts on this day of the calendar
+export const CATCHUP_DAYS = 56; // a track's form is built from this many days of racing before you first visit
 const FIRST_RACE_MINS = 19 * 60 + 12;
 const RACE_GAP_MINS = 16;
 const START_DATE = Date.UTC(2027, 0, 4); // day 0 of the calendar
@@ -54,9 +64,15 @@ export function gradeLabel(classKey, grade) {
   return `${CLASSES[classKey].prefix}${grade + 1}`;
 }
 
-/** Tracks race on alternate days: half of them on even days, half on odd. */
+/** The tracks racing on a day (each track has its own race nights). */
 export function tracksRacingOn(day) {
-  return TRACKS.filter((_, i) => i % 2 === day % 2);
+  return TRACKS.filter((t) => racesOn(t, day));
+}
+
+/** A track's own last race night of the week, when it puts on an open race. */
+function isOpenNight(track, day) {
+  const order = WEEKDAYS.filter((d) => track.nights.includes(d));
+  return WEEKDAYS[((day % 7) + 7) % 7] === order[order.length - 1];
 }
 
 export const START_MONEY = 1500;
@@ -105,10 +121,16 @@ export function addLedger(world, text, amount) {
 
 export const isMine = (dog) => dog.owner === 'player';
 
+/** How good a grade is, counted in A grades (0 = A1; open races are -2). */
+export function gradeLevel(classKey, grade) {
+  if (grade < 0) return -2;
+  const cls = CLASSES[classKey] || CLASSES.standard;
+  return cls.level + grade * cls.step;
+}
+
 /** Prize money for 1st, 2nd and 3rd, plus the appearance fee every runner gets. */
 export function prizes(classKey, grade) {
-  const level = classKey === 'standard' ? grade : 2 + grade; // D1/S1 pay like A3
-  const first = Math.round((220 - level * 15) / 5) * 5;
+  const first = Math.round((220 - gradeLevel(classKey, grade) * 15) / 5) * 5;
   return { places: [first, Math.round(first * 0.35 / 5) * 5, Math.round(first * 0.2 / 5) * 5], runFee: 25 };
 }
 
@@ -125,6 +147,13 @@ export function classTweak(dog, classKey) {
   } else if (classKey === 'stay') {
     s.stamina = Math.min(98, s.stamina + 25);
     s.earlyPace = Math.max(5, s.earlyPace - 8);
+  } else if (classKey === 'middle') {
+    s.stamina = Math.min(98, s.stamina + 10);
+  } else if (classKey === 'marathon') {
+    s.stamina = Math.min(98, s.stamina + 35);
+    s.earlyPace = Math.max(5, s.earlyPace - 10);
+  } else if (classKey === 'hurdle') {
+    s.jumping = Math.min(98, (s.jumping ?? 50) + 25);
   }
 }
 
@@ -135,7 +164,8 @@ function makePool(world, track) {
   const trainers = Array.from({ length: 8 }, () => makeTrainerName(rng, trainerNames));
   const dogs = [];
   for (const [classKey, cls] of Object.entries(CLASSES)) {
-    const distance = track.distances[cls.distIndex];
+    const distance = raceDistance(track, classKey);
+    if (!distance) continue;
     const want = cls.grades * cls.perGrade;
     const group = [];
     while (group.length < want) {
@@ -153,29 +183,39 @@ function makePool(world, track) {
       }
     }
     // Initial grading: the racing manager has seen them all trial.
-    group.sort((a, b) => overallRating(b, distance) + rng.normal() * 2 - overallRating(a, distance) - rng.normal() * 2);
+    const hurdles = classKey === 'hurdle';
+    group.sort((a, b) => overallRating(b, distance, hurdles) + rng.normal() * 2 - overallRating(a, distance, hurdles) - rng.normal() * 2);
     group.forEach((dog, i) => { dog.grade = Math.floor(i / cls.perGrade); });
     dogs.push(...group);
   }
   return { trackId: track.id, dogs, trainers, standards: {}, lastMeetingDay: -1, meetings: {} };
 }
 
+/** Hurdle races keep their own standard times (they're slower than flat races over the same trip). */
+export const stdKey = (distance, hurdles) => (hurdles ? `${distance}H` : `${distance}`);
+
 /** Typical winning time at a distance, learnt from this track's results. */
-export function standardTime(ts, distance) {
-  const list = ts.standards[distance];
+export function standardTime(ts, distance, hurdles = false) {
+  const list = ts.standards[stdKey(distance, hurdles)];
   if (!list || !list.length) return null;
   return list.reduce((a, b) => a + b, 0) / list.length;
 }
 
 function seedStandards(world, ts, track) {
   // A few trial races with ordinary dogs give each distance a starting standard.
-  const rng = makeRng(hash(`${world.seed}:${track.id}:std`));
-  for (const cls of Object.values(CLASSES)) {
-    const distance = track.distances[cls.distIndex];
+  for (const classKey of CLASS_KEYS) {
+    const distance = raceDistance(track, classKey);
+    const key = stdKey(distance, classKey === 'hurdle');
+    if (!distance || ts.standards[key]?.length) continue;
+    const rng = makeRng(hash(`${world.seed}:${track.id}:std:${distance}`));
     for (let i = 0; i < 4; i++) {
-      const runners = Array.from({ length: 6 }, (_, k) => ({ trap: k + 1, dog: makeDog(rng, { quality: 50 }) }));
-      const race = simulateRace({ track, distance, runners, seed: rng.int(1, 1e9), going: 0 });
-      (ts.standards[distance] ||= []).push(race.winnerTime);
+      const runners = Array.from({ length: 6 }, (_, k) => {
+        const dog = makeDog(rng, { quality: 50 });
+        classTweak(dog, classKey);
+        return { trap: k + 1, dog };
+      });
+      const race = simulateRace({ track, distance, runners, seed: rng.int(1, 1e9), going: 0, hurdles: classKey === 'hurdle' });
+      (ts.standards[key] ||= []).push(race.winnerTime);
     }
   }
 }
@@ -186,10 +226,15 @@ export function trackState(world, trackId) {
   let ts = world.tracks[trackId];
   if (!ts) {
     ts = world.tracks[trackId] = makePool(world, track);
-    seedStandards(world, ts, track);
+    // A new track only needs its recent history, not every meeting since day 0.
+    ts.lastMeetingDay = world.day - CATCHUP_DAYS - 1;
   }
-  for (let day = ts.lastMeetingDay + 1; day < world.day; day++) {
-    if (!tracksRacingOn(day).some((t) => t.id === trackId)) continue;
+  ts.lastVisitDay = world.day;
+  seedStandards(world, ts, track); // also fills in any distance added to the tracks file
+  // After a long gap, only the last few weeks are raced (the dogs just rest before that).
+  const from = Math.max(ts.lastMeetingDay + 1, world.day - CATCHUP_DAYS);
+  for (let day = from; day < world.day; day++) {
+    if (!racesOn(track, day)) continue;
     const meeting = getMeeting(world, trackId, day);
     for (const race of meeting.races) if (!race.result) runRace(world, meeting, race, { keepFrames: false });
   }
@@ -218,12 +263,35 @@ export function getMeeting(world, trackId, day = world.day) {
       .sort((a, b) => a.key - b.key);
     races.push({
       classKey: c.classKey, grade: null, gradeLabel: c.gradeLabel, title: c.title, cup: c.cup,
-      distance: track.distances[CLASSES[c.classKey].distIndex], runners: seeded.map(({ dog }, i) => ({ trap: i + 1, dog })),
+      hurdles: c.classKey === 'hurdle',
+      distance: raceDistance(track, c.classKey), runners: seeded.map(({ dog }, i) => ({ trap: i + 1, dog })),
       seed: rng.int(1, 1e9), result: null, trackId,
     });
   }
 
-  for (const classKey of MEETING_PLAN) {
+  // An open race on the track's big night of the week: the best six fit dogs
+  // at the standard distance, whatever their grade (A1 and A2 dogs in practice).
+  if (isOpenNight(track, day)) {
+    const ready = ts.dogs
+      .filter((d) => d.classKey === 'standard' && d.grade <= 2 && !busy.has(d.id) && !(isMine(d) && !d.entered)
+        && day - d.lastRunDay >= REST_DAYS && d.runs.length >= 2)
+      .sort((a, b) => (isMine(b) && b.grade <= 1) - (isMine(a) && a.grade <= 1) || recentFigure(b) - recentFigure(a));
+    if (ready.length >= 6) {
+      const dogs = ready.slice(0, 6);
+      dogs.forEach((d) => used.add(d));
+      const seeded = dogs
+        .map((dog) => ({ dog, key: STYLE_RANK[dog.style] + rng.normal() * 0.7 }))
+        .sort((a, b) => a.key - b.key);
+      races.push({
+        classKey: 'standard', grade: -1, gradeLabel: 'OR', title: 'Open race', open: true,
+        distance: raceDistance(track, 'standard'), runners: seeded.map(({ dog }, i) => ({ trap: i + 1, dog })),
+        seed: rng.int(1, 1e9), result: null, trackId,
+      });
+    }
+  }
+
+  const plan = MEETING_PLAN.map((k) => (raceDistance(track, k) ? k : 'standard'));
+  for (const classKey of plan) {
     const cls = CLASSES[classKey];
     // Your dogs only run if you've entered them; they get first call on a race.
     const pool = ts.dogs.filter((d) => d.classKey === classKey && !used.has(d) && !busy.has(d.id)
@@ -251,13 +319,13 @@ export function getMeeting(world, trackId, day = world.day) {
       .sort((a, b) => a.key - b.key);
     const runners = seeded.map(({ dog }, i) => ({ trap: i + 1, dog }));
     races.push({
-      classKey, grade: field.grade, gradeLabel: gradeLabel(classKey, field.grade),
-      distance: track.distances[cls.distIndex], runners, seed: rng.int(1, 1e9), result: null, trackId,
+      classKey, grade: field.grade, gradeLabel: gradeLabel(classKey, field.grade), hurdles: classKey === 'hurdle',
+      distance: raceDistance(track, classKey), runners, seed: rng.int(1, 1e9), result: null, trackId,
     });
   }
   // Weakest races first, the best race of the night last.
   const strength = (r) => (r.cup ? -1 - (r.cup.round === 'final' ? 5 : r.cup.round === 'semis' ? 3 : 0) - r.cup.index * 0.01
-    : r.classKey === 'standard' ? r.grade : r.grade + 1.5);
+    : gradeLevel(r.classKey, r.grade));
   races.sort((a, b) => strength(b) - strength(a));
   races.forEach((r, i) => {
     r.no = i + 1;
@@ -286,7 +354,7 @@ export function runRace(world, meeting, race, { keepFrames = false, sim = null }
   const track = trackById(meeting.trackId);
   const ts = world.tracks[meeting.trackId];
   // `sim` lets the page pass in the run it has just shown, so the result always matches.
-  sim ||= simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going });
+  sim ||= simulateRace({ track, distance: race.distance, runners: race.runners, seed: race.seed, going: meeting.going, hurdles: race.hurdles });
   race.result = keepFrames ? sim : { ...sim, frames: undefined };
   recordForm(ts, meeting, race, sim);
   payPrizes(world, race, sim);
@@ -371,7 +439,7 @@ export function calcTime(time, going) {
 }
 
 function recordForm(ts, meeting, race, sim) {
-  const std = standardTime(ts, race.distance);
+  const std = standardTime(ts, race.distance, race.hurdles);
   const res = sim.results;
   const winner = res[0];
   const second = res[1];
@@ -388,6 +456,7 @@ function recordForm(ts, meeting, race, sim) {
       day: meeting.day,
       trackId: meeting.trackId,
       distance: race.distance,
+      hurdles: race.hurdles ? 1 : 0,
       trap: r.trap,
       grade: race.gradeLabel,
       sectional: r.sectional,
@@ -408,10 +477,16 @@ function recordForm(ts, meeting, race, sim) {
     if (dog.runs.length > 20) dog.runs.length = 20;
     dog.lastRunDay = meeting.day;
   }
-  const list = (ts.standards[race.distance] ||= []);
+  const list = (ts.standards[stdKey(race.distance, race.hurdles)] ||= []);
   list.push(calcTime(winner.time, meeting.going));
   if (list.length > 40) list.shift();
-  if (!race.cup) regrade(res, race.classKey);
+  if (!race.cup && !race.open) regrade(res, race.classKey);
+}
+
+/** Average speed figure from a dog's last few runs (for picking open races). */
+function recentFigure(dog) {
+  const runs = dog.runs.slice(0, 4);
+  return runs.length ? runs.reduce((a, r) => a + r.fig, 0) / runs.length : -9;
 }
 
 /** Winners go up a grade; dogs beaten into 4th or worse twice running (once 5th or 6th) go down. */
@@ -428,8 +503,8 @@ function regrade(results, classKey) {
 // ---------------------------------------------------------------------------
 // Racecard helpers
 
-export function bestTime(dog, distance) {
-  const times = dog.runs.filter((r) => r.distance === distance).map((r) => r.time);
+export function bestTime(dog, distance, hurdles = false) {
+  const times = dog.runs.filter((r) => r.distance === distance && !!r.hurdles === !!hurdles).map((r) => r.time);
   return times.length ? Math.min(...times) : null;
 }
 

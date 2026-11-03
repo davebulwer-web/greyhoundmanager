@@ -24,7 +24,7 @@ for (const t of TRACKS) {
     const key = `${dog.classKey} ${CLASSES[dog.classKey].prefix}${dog.grade + 1}`;
     gradeCounts[key] = (gradeCounts[key] || 0) + 1;
     for (const r of dog.runs) {
-      if (r.day < 40) continue; // skip the settling-in period
+      if (r.day < days - 40) continue; // skip the settling-in period
       runs++;
       const [num, den] = r.sp.replace('F', '').replace('Evs', '1/1').split('/').map(Number);
       const dec = 1 + num / den;
@@ -55,7 +55,7 @@ const byGrade = {};
 for (const t of TRACKS) {
   for (const dog of world.tracks[t.id].dogs) {
     for (const r of dog.runs) {
-      if (r.day < 40 || r.pos !== 1 || t.id !== 'kestrel') continue;
+      if (r.day < days - 40 || r.pos !== 1 || t.id !== 'kestrel') continue;
       const g = (byGrade[r.grade] ||= { n: 0, time: 0, by: 0 });
       g.n++; g.time += r.calcTime;
       g.by += r.by === 'DH' ? 0 : r.by === 'SH' ? 0.1 : r.by === 'Hd' ? 0.2 : r.by === 'Nk' ? 0.35 : eval(r.by.replace(' ', '+'));

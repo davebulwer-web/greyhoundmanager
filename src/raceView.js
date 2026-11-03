@@ -1,7 +1,7 @@
 // Draws a race. Plays back the frames the simulation produced, with a
 // side-on camera that follows the leaders. All art comes from the manifest.
 
-import { DT, FRAME_STRIDE } from './sim.js';
+import { DT, FRAME_STRIDE, TAKE_OFF } from './sim.js';
 import { circumference } from './track.js';
 
 export const PRE_START = 2.5; // seconds of hare running before the traps open
@@ -162,6 +162,16 @@ export class RaceView {
       if (x > -4 && x < view.width + 4) ctx.fillRect(x, 108, 1, 6);
     }
 
+    // ---- hurdles -------------------------------------------------------------------
+    const hurdle = this.assets.sprites.hurdle;
+    if (hurdle && race.hurdles?.length) {
+      for (const hd of race.hurdles) {
+        const x = this.screenX(hd) - (hurdle.anchorX ?? 0);
+        if (x < -hurdle.image.width || x > view.width) continue;
+        ctx.drawImage(hurdle.image, x, (hurdle.bottom ?? view.railLaneY) - hurdle.image.height);
+      }
+    }
+
     // ---- traps (behind the dogs once open) --------------------------------------
     const traps = this.assets.sprites.traps;
     const trapsOpen = t >= 0;
@@ -180,22 +190,28 @@ export class RaceView {
     for (const s of order) {
       const runner = race.runners[s.i];
       this.anim[s.i] = (this.anim[s.i] + (s.v / (g.metresPerCycle || 4.6)) * g.frames * simStep) % g.frames;
-      const frame = s.v < 0.3 ? 0 : Math.floor(this.anim[s.i]);
-      const x = this.screenX(s.d) - g.anchorX;
-      const y = Math.round(s.y) - g.anchorY;
-      if (x < -g.frameWidth || x > view.width) continue;
+      // Over a hurdle: u runs 0 to 1 from take-off to landing.
+      const u = this.jumpPhase(s.d);
+      const jumping = u !== null;
+      const gs = jumping && this.assets.sprites.greyhoundJump ? this.assets.sprites.greyhoundJump : g;
+      const js = jumping && this.assets.sprites.jacketJump ? this.assets.sprites.jacketJump : j;
+      const frame = gs !== g ? Math.min(gs.frames - 1, Math.floor(u * gs.frames)) : s.v < 0.3 ? 0 : Math.floor(this.anim[s.i]);
+      const lift = jumping ? Math.round(Math.sin(Math.PI * u) * (this.assets.sprites.hurdle?.jumpHeight ?? 12)) : 0;
+      const x = this.screenX(s.d) - gs.anchorX;
+      const y = Math.round(s.y) - gs.anchorY;
+      if (x < -gs.frameWidth || x > view.width) continue;
       ctx.fillStyle = 'rgba(60,36,16,0.35)';
-      const shadowW = Math.round(g.frameWidth * 0.5);
-      ctx.fillRect(x + g.anchorX - Math.round(shadowW / 2), y + g.anchorY - 1, shadowW, 2);
+      const shadowW = Math.round(gs.frameWidth * 0.5);
+      ctx.fillRect(x + gs.anchorX - Math.round(shadowW / 2), y + gs.anchorY - 1, shadowW, 2);
       // Sheets either have one row per coat (jacket drawn on top from a
       // separate sheet) or one row per trap with the jacket already painted on.
-      const row = g.rowsBy === 'trap'
+      const row = gs.rowsBy === 'trap'
         ? runner.trap - 1
-        : Math.max(0, g.rows.indexOf(runner.dog.coat));
-      ctx.drawImage(g.image, frame * g.frameWidth, row * g.frameHeight, g.frameWidth, g.frameHeight, x, y, g.frameWidth, g.frameHeight);
-      if (j && g.rowsBy !== 'trap') {
-        const jf = frame % j.frames;
-        ctx.drawImage(j.image, jf * j.frameWidth, (runner.trap - 1) * j.frameHeight, j.frameWidth, j.frameHeight, x, y, j.frameWidth, j.frameHeight);
+        : Math.max(0, gs.rows.indexOf(runner.dog.coat));
+      ctx.drawImage(gs.image, frame * gs.frameWidth, row * gs.frameHeight, gs.frameWidth, gs.frameHeight, x, y - lift, gs.frameWidth, gs.frameHeight);
+      if (js && gs.rowsBy !== 'trap') {
+        const jf = frame % js.frames;
+        ctx.drawImage(js.image, jf * js.frameWidth, (runner.trap - 1) * js.frameHeight, js.frameWidth, js.frameHeight, x, y - lift, js.frameWidth, js.frameHeight);
       }
     }
 
@@ -213,6 +229,14 @@ export class RaceView {
 
     this.lastT = t;
     return states;
+  }
+
+  /** 0 to 1 while a dog at distance d is in the air over a hurdle, otherwise null. */
+  jumpPhase(d) {
+    for (const h of this.race.hurdles || []) {
+      if (d >= h - TAKE_OFF && d <= h + TAKE_OFF) return (d - (h - TAKE_OFF)) / (2 * TAKE_OFF);
+    }
+    return null;
   }
 
   /** A row of grandstands side by side, bottoms lined up, repeating along the track. */

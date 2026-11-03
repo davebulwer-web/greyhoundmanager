@@ -29,7 +29,7 @@ BOARD_HEIGHT = 22
 COLS = [(2, 385), (388, 767), (770, 1155), (1158, 1533)]
 ROWS = [(85, 170), (200, 288), (319, 407), (439, 532), (565, 656), (688, 781), (811, 903)]
 # (row, column) of boards to leave out, counting from 0. These name real companies.
-SKIP = {(1, 1), (1, 2), (2, 3), (4, 3)}  # Kennel Club, Freedom Leisure, Ladbrokes, Racing Post
+SKIP = {(2, 1), (1, 2), (2, 3), (4, 3)}  # Kennel Club, Freedom Leisure, Ladbrokes, Racing Post
 
 
 # Stands on the sheet: name -> (left, top, right, bottom) box in source pixels,

@@ -5,7 +5,8 @@
 // -> first 3 go through -> final of 6.
 
 import { makeRng } from './rng.js';
-import { TRACKS, trackById } from './track.js';
+import { trackById, racesOn as trackRacesOn } from './track.js';
+import { CLASSES } from './world.js';
 
 export const SEASON_DAYS = 120;
 export const CUPS = [];
@@ -21,9 +22,20 @@ export function setCups(list) {
 export const cupById = (id) => CUPS.find((c) => c.id === id);
 export const seasonOf = (day) => Math.floor(day / SEASON_DAYS);
 
-function racesOn(trackId, day) {
-  const i = TRACKS.findIndex((t) => t.id === trackId);
-  return i % 2 === day % 2;
+const racesOn = (trackId, day) => trackRacesOn(trackById(trackId), day);
+
+/** The host track's first race night on or after `day`. */
+function nightFrom(trackId, day) {
+  let d = day;
+  while (!racesOn(trackId, d) && d < day + 7) d++;
+  return d;
+}
+
+/** Heats, semis and final on the host's race nights, about ROUND_GAP days apart. */
+function roundDays(trackId, heatsFrom) {
+  const heats = nightFrom(trackId, heatsFrom);
+  const semis = nightFrom(trackId, heats + ROUND_GAP);
+  return { heats, semis, final: nightFrom(trackId, semis + ROUND_GAP) };
 }
 
 function hash(str) {
@@ -40,13 +52,26 @@ export function ensureCups(world) {
     for (const cup of CUPS) {
       const key = `${cup.id}:${s}`;
       if (world.cups.some((c) => c.key === key)) continue;
-      let heats = s * SEASON_DAYS + cup.dayInSeason;
-      while (!racesOn(cup.trackId, heats)) heats++;
       world.cups.push({
         key, cupId: cup.id, season: s, stage: 'entries',
-        days: { heats, semis: heats + ROUND_GAP, final: heats + ROUND_GAP * 2 },
+        days: roundDays(cup.trackId, s * SEASON_DAYS + cup.dayInSeason),
         playerEntries: [], field: {}, results: {}, winner: null,
       });
+    }
+  }
+  // Rounds still to come must fall on the host's race nights (they can move
+  // if the tracks file changes the nights).
+  for (const inst of world.cups) {
+    const cup = cupById(inst.cupId);
+    if (!cup || inst.stage === 'done') continue;
+    const order = ['heats', 'semis', 'final'];
+    for (let i = 0; i < order.length; i++) {
+      const r = order[i];
+      if (inst.days[r] < world.day || racesOn(cup.trackId, inst.days[r])) continue;
+      inst.days[r] = nightFrom(cup.trackId, Math.max(world.day, inst.days[r]));
+      for (let j = i + 1; j < order.length; j++) {
+        inst.days[order[j]] = nightFrom(cup.trackId, Math.max(inst.days[order[j]], inst.days[order[j - 1]] + ROUND_GAP));
+      }
     }
   }
   // Keep the last few finished competitions for the record, drop older ones.
@@ -61,7 +86,7 @@ export function cupsByDate(world) {
 export function entryProblem(world, inst, dog) {
   const cup = cupById(inst.cupId);
   if (inst.stage !== 'entries' || world.day >= inst.days.heats) return 'Entries have closed.';
-  if (dog.classKey !== cup.classKey) return `Only for ${cup.classKey === 'stay' ? 'stayers' : cup.classKey === 'sprint' ? 'sprinters' : 'standard-distance dogs'}.`;
+  if (dog.classKey !== cup.classKey) return `Only for ${CLASSES[cup.classKey]?.plural || cup.classKey}.`;
   if (inst.playerEntries.includes(dog.id)) return 'Already entered.';
   if (inst.playerEntries.length >= 6) return 'You can enter up to 6 dogs.';
   return null;

@@ -64,6 +64,7 @@ export function makeDog(rng, { quality = 50, taken, firstWord = null } = {}) {
       stamina: stat(),      // how far top speed can be held
       cornering: stat(),    // how well speed is kept through the bends
       consistency: stat(),  // how much day-to-day performance varies
+      jumping: stat(),      // how cleanly and quickly it clears hurdles
     },
   };
 }
@@ -76,10 +77,10 @@ export function makeField(rng, quality = 50) {
 }
 
 /** A rough single "ability" number, handy for odds and for testing the sim. */
-export function overallRating(dog, distance = 480) {
+export function overallRating(dog, distance = 480, hurdles = false) {
   const s = dog.stats;
   const staminaWeight = clamp((distance - 300) / 400, 0, 1);
-  return (
+  return (hurdles ? ((s.jumping ?? 50) - 50) * 0.3 : 0) + (
     s.topSpeed * 0.34 +
     s.earlyPace * 0.14 +
     s.breakSpeed * 0.12 +

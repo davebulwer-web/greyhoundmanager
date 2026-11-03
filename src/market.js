@@ -6,8 +6,8 @@
 
 export const MARKET = {
   recentWeights: [1, 0.8, 0.6, 0.45, 0.35], // how much each recent run counts, newest first
-  spread: 3.2,       // lengths of rating that make one dog e^1 times more likely than another
-  guesswork: 0.9,    // random error in the bookmaker's rating (lengths)
+  spread: 4.2,       // lengths of rating that make one dog e^1 times more likely than another
+  guesswork: 0.5,    // random error in the bookmaker's rating (lengths)
   overround: 1.2,    // the bookmaker's margin: prices add up to 120%
   longshotBias: 0.9, // < 1 makes outsiders a bit shorter than they should be
   drawPenalty: 1.2,  // lengths knocked off a railer drawn wide or a wide runner drawn on the inside

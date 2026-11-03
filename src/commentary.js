@@ -54,6 +54,12 @@ export function buildCommentary(sim) {
   let shown = 0, lastT = -9;
   for (const e of trouble) {
     if (shown >= 2 || e.t < 1.5 || e.t - lastT < 1.5) continue;
+    if (e.type === 'hurdle') {
+      const n = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'][+e.where.slice(1) - 1] || 'next';
+      say(e.t, `${e.r.dog.name} hits the ${n} flight and loses ground!`);
+      shown++; lastT = e.t;
+      continue;
+    }
     const where = e.where === '1' ? 'at the first bend' : e.where === '3' ? 'at the third bend' : e.where === 'run-up' ? 'on the run to the bend' : '';
     say(e.t, `${e.type === 'crowded' ? 'Trouble' : 'Bumping'} ${where}! ${e.r.dog.name} ${e.type === 'crowded' ? 'is checked' : 'takes a knock'}.`);
     shown++; lastT = e.t;

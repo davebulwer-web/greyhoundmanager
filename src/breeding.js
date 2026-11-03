@@ -7,7 +7,7 @@
 
 import { makeRng } from './rng.js';
 import { makeDog, makeDogName, overallRating, COATS } from './dogs.js';
-import { TRACKS } from './track.js';
+import { TRACKS, trackById, raceDistance } from './track.js';
 import { SEASON_DAYS, seasonOf, ensureCups } from './cups.js';
 import { CLASSES, addLedger, addNews, isMine, classTweak, trackState } from './world.js';
 import { takeOn, gradeNewDog, dogValue } from './kennel.js';
@@ -83,7 +83,7 @@ export function studBook(world) {
   const ts = world.tracks[world.player.homeTrack];
   const own = p.studs.map((dog) => ({ dog, fee: 0, own: true }));
   const top = ts.dogs
-    .filter((d) => d.sex === 'Dog' && !isMine(d) && d.grade <= (d.classKey === 'standard' ? 1 : 0) && d.runs.length >= 3)
+    .filter((d) => d.sex === 'Dog' && !isMine(d) && d.grade <= (d.classKey === 'standard' ? 1 : 0) && d.classKey !== 'marathon' && d.runs.length >= 3)
     .sort((a, b) => a.grade - b.grade || b.runs.filter((r) => r.pos === 1).length - a.runs.filter((r) => r.pos === 1).length)
     .slice(0, 8)
     .map((dog) => ({ dog, fee: Math.round((150 + dogValue(dog) * 0.25) / 25) * 25, own: false }));
@@ -135,9 +135,10 @@ function whelp(world, litter) {
     // Each ability comes from the parents, plus luck.
     const potential = {};
     for (const k of Object.keys(pup.stats)) {
-      const mid = (dam.stats[k] + sire.stats[k]) / 2;
+      const mid = ((dam.stats[k] ?? 50) + (sire.stats[k] ?? 50)) / 2;
       pup.stats[k] = Math.round(clamp(mid + rng.normal() * 7, 5, 96));
-      const parentRoom = ((dam.potential?.[k] ?? dam.stats[k] + 8) - dam.stats[k] + (sire.potential?.[k] ?? sire.stats[k] + 8) - sire.stats[k]) / 2;
+      const room = (p) => (p.potential?.[k] ?? (p.stats[k] ?? 50) + 8) - (p.stats[k] ?? 50);
+      const parentRoom = (room(dam) + room(sire)) / 2;
       potential[k] = Math.min(99, pup.stats[k] + Math.max(1, Math.round(parentRoom + rng.normal() * 4)));
     }
     pup.coat = rng.chance(0.4) ? dam.coat : rng.chance(0.65) ? sire.coat : rng.pick(COATS);
@@ -159,7 +160,8 @@ function whelp(world, litter) {
 function graduate(world, pup) {
   const ts = trackState(world, world.player.homeTrack);
   const s = pup.stats;
-  pup.classKey = s.stamina - s.earlyPace > 18 ? 'stay' : s.earlyPace - s.stamina > 18 ? 'sprint' : 'standard';
+  const wanted = s.stamina - s.earlyPace > 18 ? 'stay' : s.earlyPace - s.stamina > 18 ? 'sprint' : 'standard';
+  pup.classKey = raceDistance(trackById(ts.trackId), wanted) ? wanted : 'standard';
   pup.age = 2;
   pup.grade = gradeNewDog(ts, pup);
   ts.dogs.push(pup);

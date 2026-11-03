@@ -26,6 +26,7 @@ The race screen is **640 x 240 pixels**. One metre of track is 16 pixels.
 | `hare.png` | 96 x 12 | The lure. 4 frames of 24 x 12. |
 | `traps.png` | 80 x 116 | Starting traps seen side on. Frame 1 (left, 40 x 116) closed, frame 2 open. Trap 1 at the bottom. |
 | `finish_post.png` | 24 x 48 | Winning post that stands on the far rail. |
+| `hurdle.png` | 14 x 100 | One flight of hurdles in hurdle races. It crosses the track, so on screen it's a tall strip from the far side (top) to the rail (bottom). Any size works: set `anchorX` and `bottom` in the manifest. |
 | `sky.png` | 640 x 64 | Fixed sky behind everything. |
 | `stand.png` | 320 x 64 | Grandstand and crowd. Repeats sideways, scrolls slower than the track. |
 | `hoardings.png` | 384 x 18 | Advertising boards on the far rail. Repeats sideways. |
@@ -56,6 +57,16 @@ Older art is kept in the manifest but not used: `greyhoundPainted` (Dave's first
 sheet with jackets painted on, `"rowsBy": "trap"`, made by
 `tools/import_greyhound_sheet.py`) and the generated placeholders. To switch,
 rename the entry you want to `greyhound` (and its jacket entry to `jacket`).
+
+## Hurdle races
+
+`hurdle.png` is drawn at each flight. Dogs rise `jumpHeight` pixels (in the
+manifest's `hurdle` entry) as they clear it, using their gallop frames. For
+proper jumping art, add `greyhoundJump` and `jacketJump` entries to the
+manifest's sprites, laid out like `greyhound` and `jacket` (one row per coat or
+trap, frames from take-off to landing), and the game uses them over hurdles.
+The Copilot prompts for both are in the project files
+(`art/copilot-hurdle-prompts.md`).
 
 ## Grandstand and advert boards (current art)
 

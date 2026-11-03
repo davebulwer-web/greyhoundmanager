@@ -37,7 +37,7 @@ then open <http://localhost:8000>. It also works on GitHub Pages
 | `src/save.js` | Saving in the browser, and save files to download or load. |
 | `src/betting.js` | Bet types (win, each way, forecast, reverse forecast, tricast) and how they pay. |
 | `data/names.json` | Words for dog names (first word, second word) and trainer names. Edit freely. |
-| `data/tracks.json` | Every track: size, distances, how slow the sand rides. Edit or add tracks here. |
+| `data/tracks.json` | Every track: size, the distances it stages, race nights, grandstands, how slow the sand rides. Edit or add tracks here. |
 | `src/raceView.js` | Draws the race from the engine's frames. |
 | `src/minimap.js` | The top-down track map. |
 | `src/main.js` | The page: new game, racing, kennel, sales, calendar, accounts, saving, and the meeting screens. |
@@ -72,10 +72,14 @@ typing mistake, it is usually a missing comma or an extra one after the last ite
 
 ## How a meeting works
 
-Each track has its own pool of about 200 greyhounds in sprint (D), standard (A)
-and stayers (S) grades. Tracks race every other night, ten races a meeting,
-weakest race first. Before the game starts, five weeks of racing are run in the
-background so every dog has form. Winners go up a grade; dogs beaten into 4th or
+There are 16 tracks. Each has its own pool of 150 to 210 greyhounds in the
+grades it stages: standard (A1-A11), a longer standard trip (B1-B6), sprints
+(D1-D4), stayers (S1-S6), marathons (M1-M2) and hurdles (H1-H4). Each track
+races on its own nights of the week (`nights` in `data/tracks.json`), eleven
+races a meeting, weakest race first, with an open race (OR) on its last night
+of the week. The first time you visit a track, eight weeks of its racing are
+run in the background so every dog has form. To keep saves small, tracks you
+haven't visited for a while are left out of the save and built again next time. Winners go up a grade; dogs beaten into 4th or
 worse twice running (once 5th or 6th) go down. The bookmaker prices each race
 from recent times against the track standard and the trap draw, so a dog with
 hidden ability the form has not shown yet can be a big price.

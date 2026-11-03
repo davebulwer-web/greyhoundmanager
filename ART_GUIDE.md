@@ -57,6 +57,23 @@ sheet with jackets painted on, `"rowsBy": "trap"`, made by
 `tools/import_greyhound_sheet.py`) and the generated placeholders. To switch,
 rename the entry you want to `greyhound` (and its jacket entry to `jacket`).
 
+## Grandstand and advert boards (current art)
+
+The race background uses **`stand_designer.png`** (288 x 64, repeats sideways) and
+**`hoardings_designer.png`** (one long strip of advert boards, 22 pixels tall).
+Both are made from Dave's Copilot pictures in `assets/source/` by:
+
+    python3 tools/import_background.py
+
+The tool cuts the stand off its white background, trims the sloping end walls so
+copies join into one long stand, and shrinks it to 64 pixels tall. For the boards
+it cuts each one out of the grid, shrinks it to 22 pixels tall and lines them up
+in a strip, alternating colours. Boards that name real companies (Kennel Club,
+Freedom Leisure, Ladbrokes, Racing Post) are left out: see `SKIP` at the top of
+the tool. If you make a new boards picture, keep the same 4 x 7 grid, or change
+`COLS` and `ROWS` in the tool. The placeholders `stand.png` and `hoardings.png`
+are still there; point the manifest back at them to use them.
+
 ## Greyhound frames (placeholder sheet)
 
 The 8 frames are one full stride of a gallop, played in a loop, left to right:

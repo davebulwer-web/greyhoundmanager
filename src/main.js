@@ -250,6 +250,7 @@ function goLive(race) {
   state.live = race;
   state.view = race;
   state.slip.traps = [];
+  state.skipNote = '';
   if (!race) { meetingOver(); return; }
   // Work the race out now so the dogs can stand in the traps; the result is
   // only revealed (and written into the form book) when they cross the line.
@@ -260,6 +261,7 @@ function goLive(race) {
   raceSoundEnd();
   state.raceView.setRace(state.liveSim, track, race);
   state.map.setRace(state.liveSim, track);
+  showMarks(race);
   $('meeting').textContent = `Race ${race.no} · ${race.time}`;
   $('race-info').textContent = `${race.distance}m${race.hurdles ? ' hurdles' : ''} · ${race.title || `Grade ${race.gradeLabel}`}`;
   $('map-track').textContent = track.name;
@@ -269,6 +271,22 @@ function goLive(race) {
   setControls();
   render(true);
   renderAll();
+}
+
+/** Which traps hold your dogs and which you've backed, for the race screen. */
+function raceMarks(race) {
+  return {
+    mine: new Set(race.runners.filter((x) => isMine(x.dog)).map((x) => x.trap)),
+    bet: new Set((race.bets || []).flatMap((b) => b.traps)),
+  };
+}
+
+/** Mark your dogs and your bets on the race screen, and list the bets over it. */
+function showMarks(race) {
+  state.raceView.marks = raceMarks(race);
+  const bets = race.bets || [];
+  $('my-bets').innerHTML = bets.length
+    ? `Your bets: ${bets.map((b) => `${money(betCost(b))} ${describeBet(b)}`).join(' · ')}` : '';
 }
 
 function setControls() {
@@ -287,6 +305,7 @@ function startRace() {
   if (state.mode !== 'pre' || !state.live) return;
   state.live.off = true; // bets close when the traps open
   state.mode = 'running';
+  state.skipNote = '';
   setControls();
   renderAll();
   $('screen-meeting').scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -347,14 +366,15 @@ function render(snap = false) {
     else if (r.d >= race.distance) gap = i === 0 ? res.time.toFixed(2) : res.margin;
     else if (i > 0) gap = `${((leadD - r.d) / DOG_LENGTH_M).toFixed(1)}L`;
     const mine = isMine(r.runner.dog) ? ' class="mine"' : '';
-    return `<li${mine}><span class="pos">${state.t <= 0 ? '' : `${i + 1}.`}</span>${trapBadge(r.runner.trap)}<span>${r.runner.dog.name}</span><span class="gap">${gap}</span></li>`;
+    const tags = `${isMine(r.runner.dog) ? '<span class="tab-mine" title="Your dog">★</span>' : ''}${state.raceView.marks?.bet.has(r.runner.trap) ? '<span class="tab-bet" title="You have a bet">£</span>' : ''}`;
+    return `<li${mine}><span class="pos">${state.t <= 0 ? '' : `${i + 1}.`}</span>${trapBadge(r.runner.trap)}<span>${r.runner.dog.name}${tags}</span><span class="gap">${gap}</span></li>`;
   }).join('');
   const left = Math.max(0, Math.ceil(race.distance - leadD));
   $('dist-left').textContent = left > 0 ? `${left}m` : 'FINISH';
   // Commentary: the latest line that has happened.
   const said = (state.commentary || []).filter((l) => l.t <= state.t);
   const line = said[said.length - 1];
-  $('commentary').textContent = state.t < 0 ? 'The hare is running…' : line ? line.text : '';
+  $('commentary').textContent = state.t < 0 ? (state.mode === 'pre' && state.skipNote) || 'The hare is running…' : line ? line.text : '';
 }
 
 function loop() {
@@ -398,10 +418,34 @@ function renderTabs() {
       <span class="tab-win">${won ? trapBadge(won) : ''}${hasMine}${hasBets}</span></button>`;
   }).join('');
   $('race-tabs').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    state.view = m.races[+b.dataset.no - 1];
+    const race = m.races[+b.dataset.no - 1];
+    if (!race.result && race !== state.live) { jumpTo(race); return; }
+    state.view = race;
     state.slip.traps = [];
     renderAll();
   }));
+}
+
+/**
+ * Go straight to a later race: the races before it are run without being
+ * shown (their results and any bets are settled) and it comes up on the big screen.
+ */
+function jumpTo(race) {
+  const m = state.meeting;
+  if (state.mode === 'running') finishRace();
+  const skipped = m.races.filter((r) => !r.result && r.no < race.no);
+  for (const r of skipped) {
+    r.off = true;
+    runRace(state.world, m, r, r === state.live ? { sim: state.liveSim } : {});
+    settleRace(state.world, r);
+  }
+  if (skipped.length) updatePurse();
+  goLive(race);
+  state.skipNote = skipped.length
+    ? `${skipped.length === 1 ? `Race ${skipped[0].no} has` : `Races ${skipped[0].no}-${skipped[skipped.length - 1].no} have`} been run: click a tab for the result.`
+    : '';
+  render(true);
+  save();
 }
 
 /** Has this race been run and its result shown? */
@@ -484,6 +528,7 @@ function replay(race) {
   state.commentary = buildCommentary(state.liveSim);
   state.raceView.setRace(state.liveSim, track, race);
   state.map.setRace(state.liveSim, track);
+  showMarks(race);
   $('meeting').textContent = `Replay · Race ${race.no} · ${race.time}`;
   $('race-info').textContent = `${race.distance}m${race.hurdles ? ' hurdles' : ''} · Grade ${race.gradeLabel}`;
   $('banner').classList.add('hidden');
@@ -494,6 +539,7 @@ function replay(race) {
 }
 
 function renderSlip() {
+  if (state.live && state.mode === 'pre') showMarks(state.live);
   const race = state.view;
   if (!race) return;
   const slip = state.slip;
@@ -935,7 +981,7 @@ async function boot() {
     $('banner').classList.add('hidden');
     setControls();
   });
-  $('btn-next-race').addEventListener('click', () => goLive(nextRace(state.meeting)));
+  $('btn-next-race').addEventListener('click', () => { state.skipNote = ''; goLive(nextRace(state.meeting)); });
   $('btn-leave').addEventListener('click', leaveMeeting);
   $('btn-next-day').addEventListener('click', () => nextDay(1));
   $('btn-week').addEventListener('click', () => nextDay(7));

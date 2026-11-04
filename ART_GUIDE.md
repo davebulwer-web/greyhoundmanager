@@ -39,7 +39,7 @@ The race screen is **640 x 240 pixels**. One metre of track is 16 pixels.
 
 The game uses **`greyhound_coats_run.png`** (one row per coat: black, blue, fawn,
 red fawn, brindle, white & black) and **`jackets_coats_run.png`** (one row per trap,
-jacket and number), both 8 frames of 77 x 37. Both are made from ONE plain grey
+jacket and number), both 8 frames of 77 x 37. The jacket entry's `markerY` is how far down the frame the top of the jacket is: the race screen's arrows over your dogs and bets point there. Both are made from ONE plain grey
 Copilot dog on a magenta background, kept in `assets/source/`:
 
     python3 tools/import_grey_greyhound.py assets/source/greyhound_grey_designer.png

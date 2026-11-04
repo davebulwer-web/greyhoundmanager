@@ -42,6 +42,32 @@ export class RaceView {
     this.sides = null;
   }
 
+  /**
+   * Little arrows over the dogs you care about: gold for your own dogs, green
+   * for dogs you've backed (`this.marks` is { mine: Set, bet: Set } of traps).
+   */
+  drawPointers(pointers) {
+    const { ctx } = this;
+    const marks = this.marks;
+    if (!marks) return;
+    for (const p of pointers) {
+      const colours = [];
+      if (marks.mine?.has(p.trap)) colours.push('#ffd23f');
+      if (marks.bet?.has(p.trap)) colours.push('#6fe36f');
+      colours.forEach((c, k) => {
+        const cx = Math.round(p.x + (k - (colours.length - 1) / 2) * 12);
+        const top = p.y - 6;
+        // A dark outline, then the coloured arrow (rows 9, 7, 5, 3 and 1 pixels wide, on a 2-row stem).
+        ctx.fillStyle = '#111';
+        ctx.fillRect(cx - 3, top - 4, 7, 5);
+        for (let r = 0; r < 6; r++) ctx.fillRect(cx - 5 + r, top + r, 11 - 2 * r, 1);
+        ctx.fillStyle = c;
+        ctx.fillRect(cx - 2, top - 3, 5, 3);
+        for (let r = 0; r < 5; r++) ctx.fillRect(cx - 4 + r, top + r, 9 - 2 * r, 1);
+      });
+    }
+  }
+
   /** The grandstands for this track, in order. Competition races add the
    * tournament stand (second, so the track's first stand keeps its place by the line). */
   pickStands(track, meetingRace) {
@@ -198,6 +224,7 @@ export class RaceView {
     const j = this.assets.sprites.jacket;
     const dispY = this.displayYs(states, g, simStep, opts.snap);
     const order = states.map((s, i) => ({ ...s, i, y: dispY[i] })).sort((a, b) => a.y - b.y);
+    const pointers = [];
     for (const s of order) {
       const runner = race.runners[s.i];
       this.anim[s.i] = (this.anim[s.i] + (s.v / (g.metresPerCycle || 4.6)) * g.frames * simStep) % g.frames;
@@ -220,6 +247,8 @@ export class RaceView {
         ? runner.trap - 1
         : Math.max(0, gs.rows.indexOf(runner.dog.coat));
       ctx.drawImage(gs.image, frame * gs.frameWidth, row * gs.frameHeight, gs.frameWidth, gs.frameHeight, x, y - lift, gs.frameWidth, gs.frameHeight);
+      // The arrow points at the top of the jacket (markerY in the manifest, from the top of the frame).
+      pointers.push({ trap: runner.trap, x: x + gs.anchorX, y: y - lift + (j?.markerY ?? 0) });
       if (js && gs.rowsBy !== 'trap') {
         const jf = frame % js.frames;
         ctx.drawImage(js.image, jf * js.frameWidth, (runner.trap - 1) * js.frameHeight, js.frameWidth, js.frameHeight, x, y - lift, js.frameWidth, js.frameHeight);
@@ -238,6 +267,7 @@ export class RaceView {
       ctx.drawImage(hare.image, hf * hare.frameWidth, 0, hare.frameWidth, hare.frameHeight, hx, view.hareY - hare.anchorY, hare.frameWidth, hare.frameHeight);
     }
 
+    this.drawPointers(pointers);
     this.lastT = t;
     this.present(t, leaderD, simStep, opts);
     return states;

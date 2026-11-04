@@ -34,7 +34,7 @@
         "trap6"
       ],
       "anchorX": 38,
-      "anchorY": 35,
+      "anchorY": 35, "markerY": 6,
       "notes": "Jackets with numbers, worked out from the dog's outline in each frame by the same tool, so they line up exactly with greyhound_coats_run.png."
     },
     "greyhoundJump": {
